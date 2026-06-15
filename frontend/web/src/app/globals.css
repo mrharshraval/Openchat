@@ -146,3 +146,45 @@
 .delay-75  { animation-delay: 75ms; }
 .delay-150 { animation-delay: 150ms; }
 .delay-225 { animation-delay: 225ms; }
+
+/* Custom premium scrollbar styling (thin, trackless) */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px !important;
+    height: 4px !important;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(128, 128, 128, 0.3) !important;
+    border-radius: 9999px !important;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(128, 128, 128, 0.5) !important;
+}
+.custom-scrollbar {
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(128, 128, 128, 0.3) transparent !important;
+}
+
+/* Indeterminate Premium Progress Bar Animation */
+@keyframes progress-slide {
+    0% {
+        left: -40%;
+        width: 40%;
+    }
+    50% {
+        left: 20%;
+        width: 60%;
+    }
+    100% {
+        left: 100%;
+        width: 40%;
+    }
+}
+.animate-progress-slide {
+    position: absolute;
+    height: 100%;
+    background-color: var(--primary);
+    animation: progress-slide 2s infinite ease-in-out;
+}

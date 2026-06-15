@@ -2,172 +2,380 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Globe, Tag, Sparkles, AlertCircle, ArrowRight, X } from "lucide-react"
+import { Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { NativeSelect } from "@/components/ui/native-select"
+
+const POPULAR_TOPICS = [
+  { id: "gaming", label: "Gaming" },
+  { id: "movies", label: "Movies" },
+  { id: "music", label: "Music" },
+  { id: "sports", label: "Sports" },
+  { id: "technology", label: "Technology" },
+  { id: "travel", label: "Travel" },
+  { id: "food", label: "Food" },
+  { id: "books", label: "Books" },
+  { id: "art", label: "Art" },
+]
 
 export default function ChatConfiguratorPage() {
   const router = useRouter()
   
-  // State for interest tags
-  const [interestInput, setInterestInput] = React.useState("")
+  // Config state
   const [interests, setInterests] = React.useState<string[]>(["gaming", "music", "movies"])
+  const [customTopics, setCustomTopics] = React.useState<string[]>([])
+  const [showCustomInput, setShowCustomInput] = React.useState(false)
+  const [customInput, setCustomInput] = React.useState("")
 
-  // State for language and country
-  const [language, setLanguage] = React.useState("en")
-  const [country, setCountry] = React.useState("global")
+  // State machine for dialog flow
+  const [dialogState, setDialogState] = React.useState<"selection" | "matching" | "matched">("selection")
+  const [seconds, setSeconds] = React.useState(0)
+  
+  const wsRef = React.useRef<WebSocket | null>(null)
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null)
 
-  const handleAddInterest = (e: React.FormEvent) => {
-    e.preventDefault()
-    const tag = interestInput.trim().toLowerCase().replace(/[^a-z0-9]/g, "")
-    if (tag && !interests.includes(tag)) {
-      setInterests([...interests, tag])
-      setInterestInput("")
+  React.useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      if (wsRef.current) wsRef.current.close()
+    }
+  }, [])
+
+  React.useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
+    if (searchParams.get("startMatching") === "true") {
+      const saved = sessionStorage.getItem("openchat_interests")
+      const targetInterests = saved ? saved.split(",").filter(Boolean) : ["gaming", "music", "movies"]
+      if (saved) {
+        setInterests(targetInterests)
+      }
+      
+      setDialogState("matching")
+      setSeconds(0)
+
+      if (timerRef.current) clearInterval(timerRef.current)
+      timerRef.current = setInterval(() => {
+        setSeconds((prev) => prev + 1)
+      }, 1000)
+
+      const userId = getUserId()
+      const ws = new WebSocket("ws://localhost:3001")
+      wsRef.current = ws
+
+      ws.onopen = () => {
+        ws.send(
+          JSON.stringify({
+            type: "join-queue",
+            payload: {
+              userId,
+              interests: targetInterests,
+              lang: "en",
+              country: "global",
+            },
+          })
+        )
+      }
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          const { type, payload } = data
+
+          if (type === "match-found" && payload.sessionId) {
+            if (timerRef.current) clearInterval(timerRef.current)
+            ws.close()
+            
+            setDialogState("matched")
+            setTimeout(() => {
+              router.push(`/chat/${payload.sessionId}`)
+            }, 1200)
+          }
+        } catch (e) {
+          console.error("Matchmaking WS error:", e)
+        }
+      }
+
+      ws.onerror = (e) => {
+        console.error("WS connection error:", e)
+      }
+    }
+  }, [])
+
+  const getUserId = () => {
+    if (typeof window === "undefined") return ""
+    let userId = sessionStorage.getItem("openchat_userId")
+    if (!userId) {
+      userId = `user-${Math.random().toString(36).slice(2, 11)}`
+      sessionStorage.setItem("openchat_userId", userId)
+    }
+    return userId
+  }
+
+  const handleToggleTopic = (topicId: string) => {
+    if (interests.includes(topicId)) {
+      setInterests(interests.filter((t) => t !== topicId))
+      if (customTopics.includes(topicId)) {
+        setCustomTopics(customTopics.filter((t) => t !== topicId))
+      }
+    } else {
+      setInterests([...interests, topicId])
     }
   }
 
-  const handleRemoveInterest = (tagToRemove: string) => {
-    setInterests(interests.filter((t) => t !== tagToRemove))
+  const handleCustomSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    const cleanTag = customInput.trim().toLowerCase().replace(/[^a-z0-9]/g, "")
+    if (cleanTag && !interests.includes(cleanTag)) {
+      setInterests([...interests, cleanTag])
+      setCustomTopics([...customTopics, cleanTag])
+    }
+    setCustomInput("")
+    setShowCustomInput(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleCustomSubmit()
+    } else if (e.key === "Escape") {
+      setCustomInput("")
+      setShowCustomInput(false)
+    }
+  }
+
+  const handleBlur = () => {
+    const cleanTag = customInput.trim().toLowerCase().replace(/[^a-z0-9]/g, "")
+    if (cleanTag && !interests.includes(cleanTag)) {
+      setInterests((prev) => [...prev, cleanTag])
+      setCustomTopics((prev) => [...prev, cleanTag])
+    }
+    setCustomInput("")
+    setShowCustomInput(false)
   }
 
   const handleStartMatching = () => {
-    // Generate query params for matchmaking filters
-    const params = new URLSearchParams()
-    if (interests.length > 0) params.append("interests", interests.join(","))
-    params.append("lang", language)
-    params.append("country", country)
-    
-    router.push(`/chat/waiting?${params.toString()}`)
+    sessionStorage.setItem("openchat_interests", interests.join(","))
+    setDialogState("matching")
+    setSeconds(0)
+
+    if (timerRef.current) clearInterval(timerRef.current)
+    timerRef.current = setInterval(() => {
+      setSeconds((prev) => prev + 1)
+    }, 1000)
+
+    const userId = getUserId()
+    const ws = new WebSocket("ws://localhost:3001")
+    wsRef.current = ws
+
+    ws.onopen = () => {
+      ws.send(
+        JSON.stringify({
+          type: "join-queue",
+          payload: {
+            userId,
+            interests,
+            lang: "en",
+            country: "global",
+          },
+        })
+      )
+    }
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        const { type, payload } = data
+
+        if (type === "match-found" && payload.sessionId) {
+          if (timerRef.current) clearInterval(timerRef.current)
+          ws.close()
+          
+          setDialogState("matched")
+          setTimeout(() => {
+            router.push(`/chat/${payload.sessionId}`)
+          }, 1200)
+        }
+      } catch (e) {
+        console.error("Matchmaking WS error:", e)
+      }
+    }
+
+    ws.onerror = (e) => {
+      console.error("WS connection error:", e)
+    }
+  }
+
+  const handleCancelMatching = () => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    if (wsRef.current) {
+      wsRef.current.close()
+      wsRef.current = null
+    }
+    setDialogState("selection")
+    setSeconds(0)
+  }
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      router.push("/")
+    }
+  }
+
+  const allTopics = [
+    ...POPULAR_TOPICS,
+    ...customTopics.map((topic) => ({
+      id: topic,
+      label: topic.charAt(0).toUpperCase() + topic.slice(1),
+    })),
+  ]
+
+  // Format the selected interests as dot-separated string
+  const formatInterestsString = () => {
+    if (interests.length === 0) return "Random vibe"
+    return interests
+      .map((tag) => {
+        const predefined = POPULAR_TOPICS.find((t) => t.id === tag)
+        return predefined ? predefined.label : tag.charAt(0).toUpperCase() + tag.slice(1)
+      })
+      .join(" • ")
   }
 
   return (
     <div className="flex-1 flex items-center justify-center p-4 lg:p-8 bg-background">
-      <Card className="w-full max-w-lg border-border bg-card shadow-lg">
-        <CardHeader className="text-center pb-4">
-          <Badge variant="secondary" className="mx-auto mb-2 text-[9px] uppercase tracking-wider bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
-            <Sparkles className="h-3 w-3 mr-1" /> Quick Setup
-          </Badge>
-          <CardTitle className="text-xl font-bold tracking-tight">Match Preferences</CardTitle>
-          <CardDescription className="text-xs text-muted-foreground mt-1">
-            Choose filters to match with strangers who share your topics or language.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <Tabs defaultValue="interests" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-muted/50 border border-border/50 rounded-lg p-1">
-              <TabsTrigger value="interests" className="text-xs rounded-md">Interests</TabsTrigger>
-              <TabsTrigger value="filters" className="text-xs rounded-md">Language & Region</TabsTrigger>
-            </TabsList>
-            
-            {/* Interests Content */}
-            <TabsContent value="interests" className="space-y-4 mt-4 outline-none">
-              <form onSubmit={handleAddInterest} className="flex gap-2">
-                <div className="relative flex-1">
-                  <Tag className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Add interest tag (e.g. anime, coding)"
-                    value={interestInput}
-                    onChange={(e) => setInterestInput(e.target.value)}
-                    className="pl-9 text-xs h-9 border-input"
-                  />
+      <Dialog open={true} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-[400px] border border-border bg-card p-5 shadow-lg rounded-xl flex flex-col gap-4">
+          
+          {dialogState === "selection" && (
+            <>
+              <DialogHeader className="text-left items-start">
+                <DialogTitle className="text-lg font-bold tracking-tight text-foreground">Discover People</DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground mt-1">
+                  Choose a few topics to improve your matches.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="flex flex-col gap-3">
+                {/* Topic Chips Grid */}
+                <div className="flex flex-wrap gap-2">
+                  {allTopics.map((topic) => {
+                    const isSelected = interests.includes(topic.id)
+                    return (
+                      <button
+                        key={topic.id}
+                        type="button"
+                        onClick={() => handleToggleTopic(topic.id)}
+                        className={`text-xs h-9 px-4 rounded-[10px] font-medium border flex items-center justify-center transition-colors cursor-pointer ${
+                          isSelected
+                            ? "bg-primary border-primary text-primary-foreground hover:bg-primary/95"
+                            : "bg-muted/20 border-border/80 text-foreground hover:text-foreground hover:bg-muted/50 hover:border-muted-foreground/30"
+                        }`}
+                      >
+                        {topic.label}
+                      </button>
+                    )
+                  })}
                 </div>
-                <Button type="submit" size="sm" className="text-xs h-9">
-                  Add
+
+                {/* Custom Topic Trigger */}
+                <div className="flex items-center min-h-[26px]">
+                  {showCustomInput ? (
+                    <div className="w-full max-w-[200px] animate-in fade-in duration-200">
+                      <Input
+                        autoFocus
+                        placeholder="Type custom topic..."
+                        value={customInput}
+                        onChange={(e) => setCustomInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        onBlur={handleBlur}
+                        className="text-xs h-8.5 bg-background border-border w-full"
+                      />
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomInput(true)}
+                      className="text-xs text-muted-foreground/80 hover:text-foreground inline-flex items-center gap-1.5 transition-colors cursor-pointer font-medium py-0.5 p-0 border-0 bg-transparent"
+                    >
+                      <Plus className="h-4 w-4" strokeWidth={2} /> Add custom topic
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2.5 mt-1">
+                <DialogClose asChild>
+                  <Button variant="ghost" className="text-xs h-9.5 rounded-md font-medium text-muted-foreground hover:text-foreground px-4 cursor-pointer">
+                    Cancel
+                  </Button>
+                </DialogClose>
+                <Button onClick={handleStartMatching} className="text-xs h-9.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/95 font-medium px-4 cursor-pointer shadow-sm">
+                  Find a Match
                 </Button>
-              </form>
-
-              <div className="flex flex-col gap-2">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Active Tags</span>
-                {interests.length === 0 ? (
-                  <div className="text-xs text-muted-foreground py-4 border border-dashed border-border/60 rounded-lg text-center bg-muted/10">
-                    No active tags. Matching will be fully random.
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5 p-3 border border-border rounded-lg bg-muted/10">
-                    {interests.map((tag) => (
-                      <Badge key={tag} variant="secondary" className="text-[10px] flex items-center gap-1 pl-2 pr-1.5 py-0.5 bg-secondary text-secondary-foreground hover:bg-secondary">
-                        #{tag}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveInterest(tag)}
-                          className="text-muted-foreground hover:text-foreground shrink-0 rounded-full hover:bg-accent p-0.5"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                )}
               </div>
-            </TabsContent>
+            </>
+          )}
 
-            {/* Filters Content */}
-            <TabsContent value="filters" className="space-y-4 mt-4 outline-none">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="language" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    My Language
-                  </label>
-                  <div className="relative">
-                    <Globe className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground z-10" />
-                    <NativeSelect
-                      id="language"
-                      value={language}
-                      onChange={(e) => setLanguage(e.target.value)}
-                      className="pl-9 text-xs h-9"
-                    >
-                      <option value="en">English</option>
-                      <option value="es">Español</option>
-                      <option value="fr">Français</option>
-                      <option value="de">Deutsch</option>
-                      <option value="zh">中文 (Mandarin)</option>
-                    </NativeSelect>
-                  </div>
+          {dialogState === "matching" && (
+            <>
+              <DialogHeader className="text-left items-start">
+                <DialogTitle className="text-lg font-bold tracking-tight text-foreground transition-all duration-300">
+                  {seconds < 15 ? "Finding someone interesting..." : "Still searching for a great match..."}
+                </DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground mt-1 transition-all duration-300">
+                  {seconds < 15 
+                    ? "We're looking for a compatible conversation partner." 
+                    : "This is taking a little longer than usual."}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="flex flex-col gap-4 py-2 animate-in fade-in duration-300">
+                {/* Thin Elegant Horizontal Progress Bar */}
+                <div className="w-full h-0.5 bg-muted rounded-full relative overflow-hidden my-2">
+                  <div className="animate-progress-slide rounded-full" />
+                </div>
+                
+                {/* Selected Interests list */}
+                <div className="text-xs text-muted-foreground/80 font-medium select-none text-center leading-normal">
+                  {formatInterestsString()}
                 </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="region" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    Preferred Region
-                  </label>
-                  <div className="relative">
-                    <Globe className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground z-10" />
-                    <NativeSelect
-                      id="region"
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      className="pl-9 text-xs h-9"
-                    >
-                      <option value="global">Global Matching</option>
-                      <option value="na">North America</option>
-                      <option value="eu">Europe</option>
-                      <option value="as">Asia</option>
-                      <option value="sa">South America</option>
-                    </NativeSelect>
-                  </div>
+                {/* Trust and reassurance text */}
+                <div className="text-[11px] text-muted-foreground/50 text-center select-none font-medium mt-1">
+                  Usually takes less than 10 seconds
                 </div>
               </div>
-            </TabsContent>
-          </Tabs>
 
-          <div className="flex items-start gap-2 bg-muted/40 p-3 rounded-lg border border-border/40 text-[10px] text-muted-foreground leading-normal">
-            <AlertCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-            <p>
-              OpenChat matches instantly. Leaving fields default will pair you with the first available stranger globally.
-            </p>
-          </div>
-        </CardContent>
-        <CardFooter className="pt-2">
-          <Button onClick={handleStartMatching} className="w-full h-11 text-xs font-semibold flex items-center justify-center gap-2">
-            START MATCHMAKING
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </CardFooter>
-      </Card>
+              <div className="flex justify-end gap-2.5 mt-1">
+                <Button
+                  onClick={handleCancelMatching}
+                  className="text-xs h-9.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/95 font-medium px-4 cursor-pointer shadow-sm"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </>
+          )}
+
+          {dialogState === "matched" && (
+            <>
+              <DialogHeader className="text-left items-start">
+                <DialogTitle className="text-lg font-bold tracking-tight text-foreground">✨ Match Found</DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground mt-1">
+                  Shared interests: {formatInterestsString()}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="flex flex-col gap-4 py-4 justify-center items-center animate-in zoom-in-95 duration-200">
+                <span className="text-xs text-muted-foreground font-medium select-none animate-pulse">
+                  Opening conversation...
+                </span>
+              </div>
+            </>
+          )}
+
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

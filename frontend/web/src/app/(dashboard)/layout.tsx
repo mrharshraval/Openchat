@@ -13,6 +13,8 @@ import {
 import { SidebarNav } from "@/components/panels/sidebar-nav"
 import { useIsMobile } from "@/hooks/use-mobile"
 
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { resolvedTheme, setTheme } = useTheme()
   const isMobile = useIsMobile()
@@ -26,18 +28,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           "--sidebar-width-icon": "3.5rem",  /* 56px — icon-only collapsed */
         } as React.CSSProperties
       }
-      className="min-h-screen"
+      className="h-screen overflow-hidden"
     >
       <SidebarNav />
 
-      <SidebarInset className="flex flex-col min-h-screen bg-background">
+      <SidebarInset className="flex flex-col h-screen overflow-hidden bg-background">
 
         {/* ── HEADER ── */}
         {/*
           h-14 (56px) — matches sidebar header height for visual alignment.
           px-4 — standard content padding.
         */}
-        <header className="flex h-14 shrink-0 items-center justify-between px-4">
+        <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center justify-between px-4 bg-background/95 backdrop-blur-md">
 
           {/* LEFT: expand trigger (when sidebar collapsed) + avatar + name */}
           <div className="flex items-center gap-3">
@@ -55,15 +57,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           {/* RIGHT: Info / theme toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-            title="Toggle theme"
-            className="size-9 text-muted-foreground hover:text-foreground"
-          >
-            <Info className="size-5" strokeWidth={1.75} />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                className="size-9 text-muted-foreground hover:text-foreground"
+              >
+                <Info className="size-5" strokeWidth={1.75} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Toggle theme</TooltipContent>
+          </Tooltip>
         </header>
 
         {/* ── PAGE CONTENT ── */}

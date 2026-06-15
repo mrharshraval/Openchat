@@ -21,22 +21,65 @@ function MatchingQueueContent() {
 
   // Timer states
   const [seconds, setSeconds] = React.useState(0)
+  const userIdRef = React.useRef<string>("")
 
   React.useEffect(() => {
+    // Generate or retrieve persistent userId for queue tracking
+    let userId = sessionStorage.getItem("openchat_userId")
+    if (!userId) {
+      userId = `user-${Math.random().toString(36).slice(2, 11)}`
+      sessionStorage.setItem("openchat_userId", userId)
+    }
+    userIdRef.current = userId
+
     const timer = setInterval(() => {
       setSeconds((prev) => prev + 1)
     }, 1000)
 
-    // Simulate match connection in 5 seconds for prototype flow
-    const matchTimeout = setTimeout(() => {
-      router.push(`/chat/mock-session-892`)
-    }, 5000)
+    const ws = new WebSocket("ws://localhost:3001")
+    let isCancelled = false
+
+    ws.onopen = () => {
+      if (isCancelled) {
+        ws.close()
+        return
+      }
+      ws.send(
+        JSON.stringify({
+          type: "join-queue",
+          payload: {
+            userId,
+            interests: interestsList,
+            lang: langParam,
+            country: countryParam,
+          },
+        })
+      )
+    }
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        const { type, payload } = data
+
+        if (type === "match-found" && payload.sessionId) {
+          // Store connection and session state for the chat screen
+          ws.close()
+          router.push(`/chat/${payload.sessionId}`)
+        }
+      } catch (e) {
+        console.error("Matchmaking WS error:", e)
+      }
+    }
 
     return () => {
+      isCancelled = true
       clearInterval(timer)
-      clearTimeout(matchTimeout)
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close()
+      }
     }
-  }, [router])
+  }, [router, interestsParam, langParam, countryParam])
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60).toString().padStart(2, "0")
@@ -49,17 +92,11 @@ function MatchingQueueContent() {
   }
 
   return (
-    <div className="flex-1 flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md border-border bg-card shadow-lg text-center relative overflow-hidden">
-        {/* Pulsing Radar Background Effect */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-          <div className="w-48 h-48 rounded-full border-2 border-primary animate-ping" />
-          <div className="absolute w-72 h-72 rounded-full border-2 border-primary animate-ping delay-300" />
-        </div>
-
+    <div className="flex-1 flex items-center justify-center p-4 bg-background overflow-y-auto">
+      <Card className="w-full max-w-md border border-border bg-card shadow-sm rounded-2xl text-center relative overflow-hidden">
         <CardHeader className="pb-4 relative z-10">
-          <Badge variant="secondary" className="mx-auto mb-2 text-[9px] uppercase tracking-wider bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
-            <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Matching Queue
+          <Badge variant="secondary" className="mx-auto mb-2 text-[10px] font-medium uppercase tracking-wider bg-secondary text-secondary-foreground border border-border/40 hover:bg-secondary/80">
+            <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Matching Queue
           </Badge>
           <CardTitle className="text-xl font-bold tracking-tight">Finding a Stranger</CardTitle>
           <CardDescription className="text-xs text-muted-foreground mt-1">
@@ -69,9 +106,9 @@ function MatchingQueueContent() {
         
         <CardContent className="space-y-6 relative z-10 py-6">
           {/* Pulse Circle */}
-          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-primary/5 border border-primary/15 relative">
-            <div className="absolute inset-2 rounded-full bg-primary/10 animate-pulse" />
-            <Globe className="h-8 w-8 text-primary animate-bounce" />
+          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-muted/30 border border-border/40 relative">
+            <div className="absolute inset-2 rounded-full bg-muted/50 animate-pulse" />
+            <Globe className="h-8 w-8 text-foreground animate-bounce" />
           </div>
 
           {/* Time Counter */}
@@ -79,17 +116,17 @@ function MatchingQueueContent() {
             <span className="text-3xl font-mono font-bold tracking-tight text-foreground">
               {formatTime(seconds)}
             </span>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Elapsed Time</span>
+            <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Elapsed Time</span>
           </div>
 
           {/* Applied filters summary */}
           <div className="border-t border-border pt-4 flex flex-col gap-2">
-            <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Queue Filters</span>
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Queue Settings</span>
             <div className="flex flex-wrap justify-center gap-1.5">
-              <Badge variant="outline" className="text-[9px] capitalize border-border">
+              <Badge variant="outline" className="text-[9px] uppercase border-border">
                 Lang: {langParam}
               </Badge>
-              <Badge variant="outline" className="text-[9px] capitalize border-border">
+              <Badge variant="outline" className="text-[9px] uppercase border-border">
                 Region: {countryParam}
               </Badge>
               {interestsList.map((tag) => (
@@ -106,8 +143,8 @@ function MatchingQueueContent() {
           </div>
         </CardContent>
 
-        <CardFooter className="pt-2 relative z-10">
-          <Button variant="outline" onClick={handleCancel} className="w-full h-10 text-xs border-border flex items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground">
+        <CardFooter className="pt-2 pb-6 relative z-10">
+          <Button variant="outline" onClick={handleCancel} className="w-full h-10 text-xs font-semibold border-border flex items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground rounded-xl transition-colors cursor-pointer bg-background hover:bg-muted/40">
             <Ban className="h-4 w-4" />
             CANCEL SEARCH
           </Button>
@@ -120,16 +157,16 @@ function MatchingQueueContent() {
 function MatchingQueueFallback() {
   return (
     <div className="flex-1 flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md border-border bg-card shadow-lg text-center relative overflow-hidden">
+      <Card className="w-full max-w-md border border-border bg-card shadow-sm text-center relative overflow-hidden">
         <CardHeader className="pb-4">
-          <Badge variant="secondary" className="mx-auto mb-2 text-[9px] uppercase tracking-wider bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
-            <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Matching Queue
+          <Badge variant="secondary" className="mx-auto mb-2 text-[10px] font-medium uppercase tracking-wider bg-secondary text-secondary-foreground border border-border/40 hover:bg-secondary/80">
+            <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Matching Queue
           </Badge>
           <CardTitle className="text-xl font-bold tracking-tight">Loading Queue...</CardTitle>
         </CardHeader>
         <CardContent className="py-6">
-          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-primary/5 border border-primary/15">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-muted/30 border border-border/40">
+            <Loader2 className="h-8 w-8 text-foreground animate-spin" />
           </div>
         </CardContent>
       </Card>
