@@ -6,7 +6,24 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 // Initialize the WebSocket Server
 const wss = new WebSocketServer({ port: PORT });
 
-console.log(`[WS Server] Starting WebSocket server on port ${PORT}...`);
+// Helper to log with formatted timestamp and levels
+function log(msg, level = "info") {
+  const ts = new Date().toISOString().replace("T", " ").substring(0, 19);
+  const prefix = `[${ts}] [WS Server]`;
+  if (level === "warn") {
+    console.warn(`${prefix} ⚠️  ${msg}`);
+  } else if (level === "error") {
+    console.error(`${prefix} ❌  ${msg}`);
+  } else {
+    console.log(`${prefix} 🟢  ${msg}`);
+  }
+}
+
+function getStats() {
+  return `(Clients: ${wss.clients.size} | Queue: ${waitingQueue.length} | Sessions: ${Object.keys(activeSessions).length})`;
+}
+
+log(`Starting WebSocket server on port ${PORT}...`);
 
 let waitingQueue = [];
 let activeSessions = {}; // sessionId -> { users: [u1, u2], sockets: { u1: ws, u2: ws }, messages: [] }
@@ -37,7 +54,7 @@ function removeUser(userId) {
 }
 
 wss.on("listening", () => {
-  console.log(`[WS Server] WebSocket server is listening on port ${PORT}`);
+  log(`WebSocket server is listening on port ${PORT}`);
 });
 
 wss.on("connection", (ws, req) => {
@@ -49,13 +66,13 @@ wss.on("connection", (ws, req) => {
   if (process.env.NODE_ENV === "production") {
     const allowedOrigins = ["https://openchat.in", "https://ws.openchat.in"];
     if (!origin || !allowedOrigins.includes(origin)) {
-      console.warn(`[WS Server] Connection rejected. Unauthorized origin: ${origin} (IP: ${clientIp})`);
+      log(`Connection rejected. Unauthorized origin: ${origin} (IP: ${clientIp})`, "warn");
       ws.close(1008, "Unauthorized Origin");
       return;
     }
   }
 
-  console.log(`[WS Server] Client connected from IP: ${clientIp} | Origin: ${origin || "None"} | UA: ${userAgent}`);
+  log(`Client connected: IP: ${clientIp} | Origin: ${origin || "None"} | Stats: ${getStats()}`);
 
   // Heartbeat setup
   ws.isAlive = true;
@@ -71,7 +88,8 @@ wss.on("connection", (ws, req) => {
       switch (type) {
         case "join-queue": {
           const { userId, interests, lang, country } = payload;
-          console.log(`[WS Server] User ${userId} joining queue. Lang: ${lang}, Region: ${country}, Interests: ${interests}`);
+          ws.userId = userId; // Bind userId to ws
+          log(`User ${userId} joining queue. Lang: ${lang}, Region: ${country}, Interests: ${interests} | Stats: ${getStats()}`);
           
           removeUser(userId);
 
@@ -124,7 +142,7 @@ wss.on("connection", (ws, req) => {
 
             ws.send(JSON.stringify({ type: "match-found", payload: { sessionId, peerId: bestCandidate.userId } }));
             bestCandidate.ws.send(JSON.stringify({ type: "match-found", payload: { sessionId, peerId: userId } }));
-            console.log(`[WS Server] Match found: Session ${sessionId} between ${userId} and ${bestCandidate.userId}`);
+            log(`Match found: Session ${sessionId} between ${userId} and ${bestCandidate.userId} | Stats: ${getStats()}`);
           } else {
             waitingQueue.push({ userId, ws, interests, lang, country });
             ws.send(JSON.stringify({ type: "waiting", payload: {} }));
@@ -134,14 +152,15 @@ wss.on("connection", (ws, req) => {
 
         case "cancel-queue": {
           const { userId } = payload;
-          console.log(`[WS Server] User ${userId} cancelled matching`);
+          log(`User ${userId} cancelled matching | Stats: ${getStats()}`);
           removeUser(userId);
           break;
         }
 
         case "join-chat": {
           const { userId, sessionId } = payload;
-          console.log(`[WS Server] User ${userId} joining chat session ${sessionId}`);
+          ws.userId = userId; // Bind userId to ws
+          log(`User ${userId} joining chat session ${sessionId} | Stats: ${getStats()}`);
 
           if (!activeSessions[sessionId]) {
             activeSessions[sessionId] = {
@@ -323,15 +342,16 @@ wss.on("connection", (ws, req) => {
         }
 
         default:
-          console.warn(`[WS Server] Unknown action type: ${type}`);
+          log(`Unknown action type: ${type}`, "warn");
       }
     } catch (e) {
-      console.error("[WS Server] Error parsing incoming websocket message:", e);
+      log(`Error parsing incoming websocket message: ${e.message}`, "error");
     }
   });
 
   ws.on("close", () => {
-    console.log(`[WS Server] Client from ${clientIp} disconnected`);
+    const userStr = ws.userId ? `User: ${ws.userId}` : "Unidentified User";
+    log(`Client disconnected: ${userStr} | IP: ${clientIp} | Stats: ${getStats()}`);
     
     // Scan all queues/sessions to remove this socket connection
     waitingQueue = waitingQueue.filter((u) => u.ws !== ws);
@@ -360,7 +380,7 @@ wss.on("connection", (ws, req) => {
   });
 
   ws.on("error", (error) => {
-    console.error(`[WS Server] Client connection error from ${clientIp}:`, error);
+    log(`Client connection error from ${clientIp}: ${error.message}`, "error");
   });
 });
 
@@ -368,7 +388,7 @@ wss.on("connection", (ws, req) => {
 const interval = setInterval(() => {
   wss.clients.forEach((ws) => {
     if (ws.isAlive === false) {
-      console.log(`[WS Server] Terminating inactive connection`);
+      log(`Terminating inactive connection`, "warn");
       return ws.terminate();
     }
     ws.isAlive = false;
@@ -381,12 +401,12 @@ wss.on("close", () => {
 });
 
 wss.on("error", (error) => {
-  console.error('[WS Server] Server error occurred:', error);
+  log(`Server error occurred: ${error.message}`, "error");
 });
 
 // Graceful shutdown on process termination signals (SIGTERM, SIGINT)
 const shutdown = (signal) => {
-  console.log(`[WS Server] Received ${signal}. Closing server gracefully...`);
+  log(`Received ${signal}. Closing server gracefully...`, "warn");
   
   // Close all active connections
   wss.clients.forEach((client) => {
@@ -396,13 +416,13 @@ const shutdown = (signal) => {
   });
 
   wss.close(() => {
-    console.log('[WS Server] Server closed. Exiting process.');
+    log('Server closed. Exiting process.', "warn");
     process.exit(0);
   });
 
   // Force exit after 5 seconds if connection cleanup takes too long
   setTimeout(() => {
-    console.error('[WS Server] Force exiting after timeout.');
+    log('Force exiting after timeout.', "error");
     process.exit(1);
   }, 5000);
 };
