@@ -103,7 +103,8 @@ export default function ChatSessionPage() {
     }
     setUserId(uId)
 
-    const ws = new WebSocket("ws://localhost:3001")
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001"
+    const ws = new WebSocket(wsUrl)
     wsRef.current = ws
 
     const sendReadReceipt = () => {
@@ -264,7 +265,8 @@ export default function ChatSessionPage() {
     const targetInterests = saved ? saved.split(",").filter(Boolean) : ["gaming", "music", "movies"]
     setInterests(targetInterests)
 
-    const ws = new WebSocket("ws://localhost:3001")
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001"
+    const ws = new WebSocket(wsUrl)
     matchingWsRef.current = ws
 
     ws.onopen = () => {

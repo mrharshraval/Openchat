@@ -7,6 +7,7 @@ import { Loader2, Globe, Tag, Ban, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { useWebSocket } from "@/hooks/use-websocket"
 
 function MatchingQueueContent() {
   const router = useRouter()
@@ -21,29 +22,32 @@ function MatchingQueueContent() {
 
   // Timer states
   const [seconds, setSeconds] = React.useState(0)
-  const userIdRef = React.useRef<string>("")
+  const [userId, setUserId] = React.useState<string>("")
 
   React.useEffect(() => {
     // Generate or retrieve persistent userId for queue tracking
-    let userId = sessionStorage.getItem("openchat_userId")
-    if (!userId) {
-      userId = `user-${Math.random().toString(36).slice(2, 11)}`
-      sessionStorage.setItem("openchat_userId", userId)
+    let uId = sessionStorage.getItem("openchat_userId")
+    if (!uId) {
+      uId = `user-${Math.random().toString(36).slice(2, 11)}`
+      sessionStorage.setItem("openchat_userId", uId)
     }
-    userIdRef.current = userId
+    setUserId(uId)
 
     const timer = setInterval(() => {
       setSeconds((prev) => prev + 1)
     }, 1000)
 
-    const ws = new WebSocket("ws://localhost:3001")
-    let isCancelled = false
+    return () => {
+      clearInterval(timer)
+    }
+  }, [])
 
-    ws.onopen = () => {
-      if (isCancelled) {
-        ws.close()
-        return
-      }
+  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001"
+  useWebSocket(userId ? wsUrl : null, {
+    shouldReconnect: true,
+    reconnectAttempts: 3,
+    onOpen: (event) => {
+      const ws = event.target as WebSocket
       ws.send(
         JSON.stringify({
           type: "join-queue",
@@ -55,31 +59,20 @@ function MatchingQueueContent() {
           },
         })
       )
-    }
-
-    ws.onmessage = (event) => {
+    },
+    onMessage: (event) => {
       try {
         const data = JSON.parse(event.data)
         const { type, payload } = data
 
         if (type === "match-found" && payload.sessionId) {
-          // Store connection and session state for the chat screen
-          ws.close()
           router.push(`/chat/${payload.sessionId}`)
         }
       } catch (e) {
         console.error("Matchmaking WS error:", e)
       }
     }
-
-    return () => {
-      isCancelled = true
-      clearInterval(timer)
-      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-        ws.close()
-      }
-    }
-  }, [router, interestsParam, langParam, countryParam])
+  })
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60).toString().padStart(2, "0")
