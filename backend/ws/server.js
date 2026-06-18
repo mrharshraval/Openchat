@@ -384,7 +384,7 @@ wss.on("connection", (ws, req) => {
   });
 });
 
-// Setup interval to ping clients and keep connections alive (every 30 seconds)
+// Setup interval to ping clients and keep connections alive (every 20 seconds to stay well below Render's 30-second idle timeout)
 const interval = setInterval(() => {
   wss.clients.forEach((ws) => {
     if (ws.isAlive === false) {
@@ -394,7 +394,7 @@ const interval = setInterval(() => {
     ws.isAlive = false;
     ws.ping();
   });
-}, 30000);
+}, 20000);
 
 wss.on("close", () => {
   clearInterval(interval);
