@@ -1,175 +1,179 @@
 # Moots WebSocket Server
 
-A standalone, lightweight WebSocket server built with the `ws` library in Node.js. It manages live matching queues, user chat sessions, messaging, typing status notifications, message updates, and reactions for `moots.in`.
+A production-grade, highly structured WebSocket server built with the `ws` library and `zod` for schema validation in Node.js. It manages real-time user matchmaking queues, secure chat sessions, typing statuses, reactions, read receipts, and connection heartbeats.
 
-This server is designed for deployment on `ws.moots.in`.
+This service is optimized for deployment on Render.com and custom domain configurations (like `ws.moots.in`).
 
-## Getting Started
+---
+
+## 1. Directory Structure & Architecture
+
+The server adopts a modular, service-based design to decouple connection logic, matchmaking state, active session lifetimes, and message routing.
+
+```
+backend/ws/
+├── package.json         # Server dependencies (ws, zod)
+├── server.js            # Entrypoint coordinating connection setups & cleanup tasks
+└── src/
+    ├── config.js        # Global configuration (ports, origins, intervals)
+    ├── types.js         # Zod schema definitions for incoming message validation
+    ├── registry.js      # Connection registry (tracks connections without mutating ws)
+    ├── matchmaking.js   # Matchmaking service (user queue & search algorithms)
+    ├── session.js       # Session state service (active rooms & reconnect grace periods)
+    └── messaging.js     # Centralized routing, validation, and structured logs
+```
+
+### Component Breakdown
+1. **Entrypoint (`server.js`)**: Hooks standard `http` / `ws` event listeners to registry services.
+2. **Registry (`src/registry.js`)**: Tracks socket lifecycles, maps unique connection IDs (UUID) to socket instances, and manages server-side ping/pong heartbeats.
+3. **Matchmaking (`src/matchmaking.js`)**: Manages the user queue and executes the matching algorithm based on language, geographic region, and shared interests.
+4. **Session (`src/session.js`)**: Manages chat rooms, stores messages, and administers disconnect timers (grace periods) to preserve sessions during network drops or page transitions.
+5. **Messaging (`src/messaging.js`)**: Orchestrates schema validation, handles centralized message routing, and prints structured JSON-like logs containing `[request id]`, `[user id]`, `[session id]`, and `[connection id]`.
+
+---
+
+## 2. API Reference (Message schemas)
+
+All incoming messages must be JSON strings with the structure `{ type: string, payload: object }`. The payload schema is strictly checked using `zod`.
+
+### Matchmaking Events
+#### `join-queue`
+Adds a user to the matchmaking pool and executes the pairing search.
+* **Payload Schema**:
+  ```ts
+  {
+    userId: string;
+    interests: string[];
+    lang: string;
+    country: string;
+  }
+  ```
+
+#### `cancel-queue`
+Removes a user from the matchmaking pool.
+* **Payload Schema**:
+  ```ts
+  {
+    userId: string;
+  }
+  ```
+
+### Chat Events
+#### `join-chat`
+Connects a client to a matched active chat session.
+* **Payload Schema**:
+  ```ts
+  {
+    userId: string;
+    sessionId: string;
+  }
+  ```
+* **Server Response**:
+  * Emits `chat-history` (containing array of past messages and `partnerJoined` status) to the joining client.
+  * Emits `partner-joined` to the other user if they are online.
+
+#### `send-message`
+Transmits a text message to all participants in the session.
+* **Payload Schema**:
+  ```ts
+  {
+    userId: string;
+    sessionId: string;
+    content: string;
+    replyTo?: {
+      id: string;
+      senderId: string;
+      content: string;
+    }
+  }
+  ```
+
+#### `edit-message`
+Edits the text of an existing message. Users can only edit messages they sent.
+* **Payload Schema**:
+  ```ts
+  {
+    userId: string;
+    sessionId: string;
+    messageId: string;
+    newContent: string;
+  }
+  ```
+
+#### `send-reaction`
+Toggles an emoji reaction on a message. Emitting the same emoji toggles it off.
+* **Payload Schema**:
+  ```ts
+  {
+    userId: string;
+    sessionId: string;
+    messageId: string;
+    emoji: string;
+  }
+  ```
+
+#### `typing-status`
+Broadcasts live typing status to the partner.
+* **Payload Schema**:
+  ```ts
+  {
+    userId: string;
+    sessionId: string;
+    isTyping: boolean;
+  }
+  ```
+
+#### `read-messages`
+Marks all messages sent by the partner in the session as read (`seen: true`).
+* **Payload Schema**:
+  ```ts
+  {
+    userId: string;
+    sessionId: string;
+  }
+  ```
+
+---
+
+## 3. Production Deployment & Render Support
+
+### Port Bindings
+Render binds web services dynamically using the `PORT` environment variable (typically port `10000`). The server resolves this configuration automatically:
+```js
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
+```
+
+### Connection Heartbeats
+To prevent Render's reverse proxy from dropping idle connections (defaulting on a 30-second timeout), the server executes pings **every 20 seconds**. If a client does not acknowledge the ping in time, the connection is safely terminated and cleaned up.
+
+### Reconnection Grace Period
+When the frontend completes matchmaking, it transitions between pages, causing the client to intentionally close the matchmaking socket and open a new chat socket. 
+1. The server isolates these connections by type (`"queue"` vs `"chat"`). 
+2. When the matchmaking socket closes, it is cleaned up immediately.
+3. When the chat socket closes, the server initializes a **30-second grace period timer** for that user.
+4. If the client connects and joins the chat session on a new socket within 30 seconds, the timer is cleared and the session continues without interruption or notifying the partner.
+
+---
+
+## 4. Getting Started
 
 ### Prerequisites
-- Node.js (v18 or higher recommended)
-- npm or another package manager
+- Node.js (v18 or higher)
+- npm, pnpm, or yarn
 
 ### Installation
-From the root of the project or directly in this folder:
+From this directory:
 ```bash
-cd backend/ws
 npm install
 ```
 
 ### Running Locally
-To start the WebSocket server in production mode:
-```bash
-npm start
-```
-
-To start the WebSocket server in development mode (with auto-reload on changes):
+To run the server in development mode (with watch/auto-reload):
 ```bash
 npm run dev
 ```
 
----
-
-## Production Deployment on `ws.moots.in`
-
-To host this WebSocket server as a standalone service on `ws.moots.in` pointing to your backend server, follow these steps:
-
-### 1. Process Management with PM2
-To keep the WebSocket server running continuously in the background and automatically restart on failure or reboot, use **PM2**:
-
+To run in production mode:
 ```bash
-# Install PM2 globally
-npm install -g pm2
-
-# Start the server with a customized name and environment variables
-PORT=3001 pm2 start server.js --name "moots-ws"
-
-# Ensure PM2 restarts on system reboot
-pm2 startup
-pm2 save
-```
-
-### 2. Nginx Reverse Proxy Configuration
-Place the WebSocket server behind Nginx to handle SSL/TLS termination, map port `80`/`443` to the local port (e.g., `3001`), and enable connection upgrading.
-
-Create or update your Nginx configuration block (e.g. `/etc/nginx/sites-available/ws.moots.in`):
-
-```nginx
-server {
-    listen 80;
-    listen [::]:80;
-    server_name ws.moots.in;
-
-    # Redirect all HTTP requests to HTTPS
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name ws.moots.in;
-
-    # SSL Certificates (managed by Let's Encrypt / Certbot)
-    ssl_certificate /etc/letsencrypt/live/ws.moots.in/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/ws.moots.in/privkey.pem;
-
-    # WebSocket Proxy Settings
-    location / {
-        proxy_pass http://127.0.0.1:3001;
-        
-        # Core headers needed to upgrade HTTP to WebSocket
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        
-        # Standard proxy headers
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # WebSocket timeouts (prevent connection drop by Nginx)
-        proxy_read_timeout 3600s;
-        proxy_send_timeout 3600s;
-    }
-}
-```
-
-Enable the site and reload Nginx:
-```bash
-sudo ln -s /etc/nginx/sites-available/ws.moots.in /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
----
-
-## Frontend Integration
-
-To connect the frontend hosted on `moots.in` to `ws.moots.in`, configure your environment variables:
-
-### Next.js / React Environment Variable Setup
-
-In the frontend repository, add/modify your `.env` or `.env.production`:
-
-```env
-# For Local Development
-NEXT_PUBLIC_WS_URL=ws://localhost:3001
-
-# For Production
-NEXT_PUBLIC_WS_URL=wss://ws.moots.in
-```
-
-### React / React Hooks Connection Example
-
-```tsx
-import React, { useEffect, useState, useRef } from 'react';
-
-// Automatically resolves to production URL or local development fallback
-const WEBSOCKET_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
-
-export function useChatWebSocket(userId: string) {
-  const socketRef = useRef<WebSocket | null>(null);
-
-  useEffect(() => {
-    const ws = new WebSocket(WEBSOCKET_URL);
-    socketRef.current = ws;
-
-    ws.onopen = () => {
-      console.log('Connected to Moots WebSocket');
-      // Example: Join matching queue on open
-      ws.send(JSON.stringify({
-        type: 'join-queue',
-        payload: {
-          userId,
-          interests: ['coding', 'music'],
-          lang: 'en',
-          country: 'global'
-        }
-      }));
-    };
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log('Received action:', data.type, data.payload);
-      // Handle different types: 'match-found', 'message', 'partner-typing', etc.
-    };
-
-    ws.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, [userId]);
-
-  const sendAction = (type: string, payload: any) => {
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ type, payload }));
-    }
-  };
-
-  return { sendAction };
-}
+npm start
 ```

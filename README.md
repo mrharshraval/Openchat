@@ -1,8 +1,8 @@
 # Moots System & WebSocket Architecture Documentation
 
-This repository houses the code for **Moots**, a real-time matching and random chat application. The system is split into two primary segments:
+This repository houses the code for **Moots/OpenChat**, a real-time matchmaking and messaging application. The system is split into two primary segments:
 1. **Frontend**: Next.js client application hosted on `moots.in`.
-2. **Backend**: Standalone WebSocket server hosted on `ws.moots.in` using the `ws` package.
+2. **Backend**: Standalone production-grade WebSocket server hosted on `ws.moots.in` using the `ws` package.
 
 ---
 
@@ -22,11 +22,33 @@ This repository houses the code for **Moots**, a real-time matching and random c
    └──────────────────────────────────────────────────────────┘
 ```
 
-The WebSocket server coordinates the real-time matching queue, monitors client heartbeats, and routes chat session events (typing status, messaging, edits, and reactions) directly between paired users without database bottleneck constraints.
+The WebSocket server coordinates the real-time matching queue, monitors client heartbeats, and routes chat session events (typing status, messaging, edits, and reactions) directly between paired users.
 
 ---
 
-## 2. Local Development Mode
+## 2. Workspace Layout
+
+### Backend Service (`backend/ws`)
+- **`server.js`**: Server entrypoint managing WebSocket instantiation and connection handshakes.
+- **`src/config.js`**: Global configuration values (ports, allowed origins, timeouts).
+- **`src/types.js`**: Zod schema definitions validating inbound message payloads.
+- **`src/registry.js`**: Connection registry managing connection metadata without direct socket mutations.
+- **`src/matchmaking.js`**: Matchmaking service controlling the queue and matching algorithms.
+- **`src/session.js`**: Session manager controlling active chat rooms and reconnection timeouts.
+- **`src/messaging.js`**: Messaging controller managing message routing and structured JSON logs.
+
+### Frontend Client (`frontend/web`)
+- **`src/app/(dashboard)`**: Houses the page layouts and main dashboard routing.
+  - `/chat` — Queue configuration and interest selection.
+  - `/chat/[sessionId]` — Main chat feed and interactive panel.
+  - `/notifications` — High-fidelity notification feed.
+  - `/friends` — Friend lists (Online, All, Pending, Blocked) and search filters.
+  - `/groups` — Public group discovery and creation dialog.
+- **`src/hooks/use-websocket.ts`**: Core React hook managing connection lifecycles, exponential backoffs, and auto-cleanup.
+
+---
+
+## 3. Local Development Mode
 
 To run the application locally on your developer machine:
 
@@ -64,24 +86,15 @@ To run the application locally on your developer machine:
 
 ---
 
-## 3. Production Deployment Mode
+## 4. Production Deployment Mode
 
-In production, the frontend is served at `moots.in`, and the WebSocket service runs on a dedicated domain at `ws.moots.in` behind an SSL/TLS-terminated Nginx proxy.
+In production, the frontend is served at `moots.in`, and the WebSocket service runs on a dedicated domain at `ws.moots.in` behind Render's proxy or an SSL/TLS-terminated Nginx proxy.
 
-### A. WebSocket Server Daemon (PM2 Setup)
-PM2 is used to run the node server continuously in the background, restarting it automatically if it crashes or the VM reboots.
-
-```bash
-cd backend/ws
-npm install -g pm2
-
-# Start the server daemon with environment setup
-NODE_ENV=production PORT=3001 pm2 start server.js --name "moots-ws-server"
-
-# Persist server state on boot
-pm2 startup
-pm2 save
-```
+### A. Render.com Deployment
+The server is fully optimized to run on Render.com:
+- Automatically binds to the assigned dynamic port (`process.env.PORT`).
+- Utilizes a **20-second heartbeat check** to prevent Render's HTTP proxy from terminating idle connections on its 30-second timeout.
+- Implements a **30-second reconnection grace period** to preserve active chat sessions while users transition from the matchmaking queue to their new chat page.
 
 ### B. Nginx Reverse Proxy Configuration (`ws.moots.in`)
 The WebSocket protocol starts as an HTTP/1.1 request and is "Upgraded" to a TCP connection. Nginx must be configured to pass these hop-by-hop headers.
@@ -135,87 +148,14 @@ sudo systemctl reload nginx
 
 ---
 
-## 4. WebSocket Protocol Schemas & Events
-
-Clients and servers communicate by passing stringified JSON events using a `{ type: string, payload: object }` structure.
-
-### Client-to-Server Actions
-
-#### `join-queue`
-Enters the matchmaking queue with preferences.
-```json
-{
-  "type": "join-queue",
-  "payload": {
-    "userId": "user-abcdefg",
-    "interests": ["gaming", "music"],
-    "lang": "en",
-    "country": "global"
-  }
-}
-```
-
-#### `send-message`
-Sends a message inside an active chat session.
-```json
-{
-  "type": "send-message",
-  "payload": {
-    "userId": "user-abcdefg",
-    "sessionId": "session-12345",
-    "content": "Hello stranger!"
-  }
-}
-```
-
-#### `typing-status`
-Notifies the partner of typing status.
-```json
-{
-  "type": "typing-status",
-  "payload": {
-    "userId": "user-abcdefg",
-    "sessionId": "session-12345",
-    "isTyping": true
-  }
-}
-```
-
-### Server-to-Client Responses
-
-#### `match-found`
-Broadcasted to both users when matched.
-```json
-{
-  "type": "match-found",
-  "payload": {
-    "sessionId": "session-12345",
-    "peerId": "user-98765"
-  }
-}
-```
-
-#### `partner-disconnected`
-Sent to the remaining partner when a peer closes their connection.
-```json
-{
-  "type": "partner-disconnected",
-  "payload": {
-    "partnerId": "user-98765"
-  }
-}
-```
-
----
-
 ## 5. Security & Connection Best Practices
 
-### Backend Standards (Implemented)
-1. **Cross-Site WebSocket Hijacking (CSWSH) Mitigation**: In production, the server validates the incoming HTTP `Origin` header. If the origin is not explicitly `https://moots.in` or `https://ws.moots.in`, the request is denied with a `1008` policy exception code.
-2. **Heartbeat Pings**: The server triggers a `ping` request to all active connections every 30 seconds. If a client fails to reply with a `pong` before the next check, the connection is terminated (`ws.terminate()`) to prune stale connections.
+### Backend Standards
+1. **Cross-Site WebSocket Hijacking (CSWSH) Mitigation**: In production, the server validates the incoming HTTP `Origin` header. Allowed origins include `https://moots.in`, `https://www.moots.in`, and `https://ws.moots.in`.
+2. **Heartbeat Pings**: The server triggers a `ping` request to all active connections every 20 seconds. If a client fails to reply with a `pong` before the next check, the connection is terminated (`ws.terminate()`).
 3. **Graceful Terminations**: Listens for termination signals (`SIGINT`, `SIGTERM`) to gracefully exit, sending a `1001` (Going Away) close frame to connected clients and shutting down sockets before terminating the process.
 
-### Frontend Standards (Implemented)
+### Frontend Standards
 1. **Reconnection Hook**: Clients connect via the [@/hooks/use-websocket](frontend/web/src/hooks/use-websocket.ts) hook. If the connection drops unexpectedly, it tries to reconnect automatically.
-2. **Exponential Backoff**: Reconnection attempts are spaced out using an exponential backoff formula (`reconnectInterval * 2^attempts`) to avoid DDOS-ing the backend server.
+2. **Exponential Backoff**: Reconnection attempts are spaced out using an exponential backoff formula (`reconnectInterval * 2^attempts`) to avoid overloading the backend.
 3. **Resource Cleanup**: Subscribes to window focus events for read-receipt updates and cleans up timers/connections automatically on component unmounts to prevent memory leaks.

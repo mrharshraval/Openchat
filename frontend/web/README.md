@@ -8,13 +8,16 @@ This is the Next.js client-side application for Moots, hosted on `moots.in`. It 
 
 The application dynamically resolves the WebSocket connection string using Next.js environment variables. You must specify the `NEXT_PUBLIC_WS_URL` variable. Next.js automatically bundles variables prefixed with `NEXT_PUBLIC_` to the client-side code.
 
-Create a `.env` (or `.env.local`) file in this folder:
+Standard environment files:
+- `.env.production` (Committed to Git): Contains defaults for the production build.
+- `.env.local` (Git ignored): Used for local machine overrides.
 
+Example environment values:
 ```env
 # For Local Development (resolves to the local server port)
 NEXT_PUBLIC_WS_URL=ws://localhost:3001
 
-# For Production Deployment
+# For Production Deployment (.env.production)
 NEXT_PUBLIC_WS_URL=wss://ws.moots.in
 ```
 
@@ -22,13 +25,26 @@ If the environment variable is not defined, the client falls back to `ws://local
 
 ---
 
-## 2. WebSocket Connection Hook (`useWebSocket`)
+## 2. Page & Routing Architecture
+
+The client contains a dashboard layout group (`(dashboard)`) which houses the core navigation routes.
+
+### Active Routes
+- `/chat` — Choose interests, enter the queue, and pair with other users.
+- `/chat/[sessionId]` — Secure private room to chat, react to messages, view typing indicators, and track read receipts.
+- `/notifications` — High-fidelity notifications center showcasing matches, system notices, and social updates.
+- `/friends` — Friend manager with categorized lists (Online, All, Pending, Blocked) and search filtering.
+- `/groups` — Interactive community space showing public group cards and a modal dialog for group creation.
+
+---
+
+## 3. WebSocket Connection Hook (`useWebSocket`)
 
 To maintain connection reliability, do **not** use the raw browser `new WebSocket()` API directly inside your pages. Instead, use the custom `useWebSocket` hook provided in [@/hooks/use-websocket](src/hooks/use-websocket.ts).
 
 ### Benefits of the Custom Hook:
 - **Auto-reconnection**: Automatically reconnects if the network drops or the server restarts.
-- **Exponential Backoff**: Spaces out reconnection retries (`3s`, `6s`, `12s`, etc.) to prevent DDoS-like behavior on the server.
+- **Exponential Backoff**: Spaces out reconnection retries (`3s`, `6s`, `12s`, etc.) to prevent overloading the server.
 - **Auto-cleanup**: Cleans up timers, handlers, and closes the socket cleanly on page transitions and component unmounts to prevent memory leaks.
 
 ### API Signature:
@@ -49,7 +65,7 @@ const { socket, status, sendMessage, connect, disconnect } = useWebSocket(url, {
 
 ---
 
-## 3. Integration Examples
+## 4. Integration Examples
 
 ### Example A: Matchmaking Queue (`waiting/page.tsx`)
 Connect to the server to join the waiting queue and wait for the `match-found` event:
@@ -127,7 +143,7 @@ const { sendMessage } = useWebSocket(wsUrl, {
 
 ---
 
-## 4. UI Component Library (shadcn/ui)
+## 5. UI Component Library (shadcn/ui)
 
 This app uses standard `shadcn/ui` components. To add new UI components, run:
 
