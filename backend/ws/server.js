@@ -30,7 +30,7 @@ let activeSessions = {}; // sessionId -> { users: [u1, u2], sockets: { u1: ws, u
 
 function removeUser(userId) {
   waitingQueue = waitingQueue.filter((u) => u.userId !== userId);
-  
+
   // Clean up existing sessions
   for (const sessionId in activeSessions) {
     const session = activeSessions[sessionId];
@@ -64,7 +64,7 @@ wss.on("connection", (ws, req) => {
 
   // 1. Origin Verification (Security Standard to prevent Cross-Site WebSocket Hijacking - CSWSH)
   if (process.env.NODE_ENV === "production") {
-    const allowedOrigins = ["https://moots.in", "https://ws.moots.in"];
+    const allowedOrigins = ["https://www.moots.in", "https://moots.in", "https://ws.moots.in"];
     if (!origin || !allowedOrigins.includes(origin)) {
       log(`Connection rejected. Unauthorized origin: ${origin} (IP: ${clientIp})`, "warn");
       ws.close(1008, "Unauthorized Origin");
@@ -84,13 +84,13 @@ wss.on("connection", (ws, req) => {
     try {
       const data = JSON.parse(rawMessage);
       const { type, payload } = data;
-      
+
       switch (type) {
         case "join-queue": {
           const { userId, interests, lang, country } = payload;
           ws.userId = userId; // Bind userId to ws
           log(`User ${userId} joining queue. Lang: ${lang}, Region: ${country}, Interests: ${interests} | Stats: ${getStats()}`);
-          
+
           removeUser(userId);
 
           // Try to match
@@ -288,7 +288,7 @@ wss.on("connection", (ws, req) => {
           const msg = session.messages.find((m) => m.id === messageId);
           if (msg) {
             msg.reactions = msg.reactions || {};
-            
+
             // Remove user from any other emoji reactions on this message
             for (const key in msg.reactions) {
               if (key !== emoji) {
@@ -302,7 +302,7 @@ wss.on("connection", (ws, req) => {
             // Toggle user on the selected emoji
             const list = msg.reactions[emoji] || [];
             const exists = list.includes(userId);
-            
+
             msg.reactions[emoji] = exists ? list.filter((id) => id !== userId) : [...list, userId];
 
             if (msg.reactions[emoji].length === 0) {
@@ -352,7 +352,7 @@ wss.on("connection", (ws, req) => {
   ws.on("close", () => {
     const userStr = ws.userId ? `User: ${ws.userId}` : "Unidentified User";
     log(`Client disconnected: ${userStr} | IP: ${clientIp} | Stats: ${getStats()}`);
-    
+
     // Scan all queues/sessions to remove this socket connection
     waitingQueue = waitingQueue.filter((u) => u.ws !== ws);
 
@@ -407,7 +407,7 @@ wss.on("error", (error) => {
 // Graceful shutdown on process termination signals (SIGTERM, SIGINT)
 const shutdown = (signal) => {
   log(`Received ${signal}. Closing server gracefully...`, "warn");
-  
+
   // Close all active connections
   wss.clients.forEach((client) => {
     if (client.readyState === client.OPEN) {
