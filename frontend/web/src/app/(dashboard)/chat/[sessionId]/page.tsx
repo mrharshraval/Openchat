@@ -12,6 +12,10 @@ import {
   CheckCheck,
   ChevronRight,
   X,
+  Copy,
+  Edit3,
+  Info,
+  Heart,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Textarea } from "@/components/ui/textarea"
@@ -86,6 +90,49 @@ export default function ChatSessionPage() {
   const [showScrollBtn, setShowScrollBtn] = React.useState(false)
   const [expandedMsgs, setExpandedMsgs] = React.useState<Set<string>>(new Set())
 
+  const longPressTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+  const lastTapRef = React.useRef<{ time: number; msgId: string } | null>(null)
+  const [activeTouchMessage, setActiveTouchMessage] = React.useState<Message | null>(null)
+  const [showTouchSheet, setShowTouchSheet] = React.useState(false)
+
+  const getTouchHandlers = (msg: Message) => {
+    return {
+      onTouchStart: () => {
+        if (longPressTimeoutRef.current) clearTimeout(longPressTimeoutRef.current)
+        longPressTimeoutRef.current = setTimeout(() => {
+          setActiveTouchMessage(msg)
+          setShowTouchSheet(true)
+          if (typeof window !== "undefined" && navigator.vibrate) {
+            navigator.vibrate(50)
+          }
+        }, 500)
+      },
+      onTouchEnd: () => {
+        if (longPressTimeoutRef.current) {
+          clearTimeout(longPressTimeoutRef.current)
+          longPressTimeoutRef.current = null
+        }
+        const now = Date.now()
+        const lastTap = lastTapRef.current
+        if (lastTap && lastTap.msgId === msg.id && now - lastTap.time < 300) {
+          handleReact(msg.id, "❤️")
+          lastTapRef.current = null
+          if (typeof window !== "undefined" && navigator.vibrate) {
+            navigator.vibrate([40, 40])
+          }
+        } else {
+          lastTapRef.current = { time: now, msgId: msg.id }
+        }
+      },
+      onTouchMove: () => {
+        if (longPressTimeoutRef.current) {
+          clearTimeout(longPressTimeoutRef.current)
+          longPressTimeoutRef.current = null
+        }
+      },
+    }
+  }
+
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
   const wsRef = React.useRef<WebSocket | null>(null)
   const matchingWsRef = React.useRef<WebSocket | null>(null)
@@ -96,10 +143,10 @@ export default function ChatSessionPage() {
   }, [messages])
 
   React.useEffect(() => {
-    let uId = sessionStorage.getItem("openchat_userId")
+    let uId = sessionStorage.getItem("moots_userId")
     if (!uId) {
       uId = `user-${Math.random().toString(36).slice(2, 11)}`
-      sessionStorage.setItem("openchat_userId", uId)
+      sessionStorage.setItem("moots_userId", uId)
     }
     setUserId(uId)
 
@@ -261,7 +308,7 @@ export default function ChatSessionPage() {
       setMatchingSeconds((prev) => prev + 1)
     }, 1000)
 
-    const saved = sessionStorage.getItem("openchat_interests")
+    const saved = sessionStorage.getItem("moots_interests")
     const targetInterests = saved ? saved.split(",").filter(Boolean) : ["gaming", "music", "movies"]
     setInterests(targetInterests)
 
@@ -518,7 +565,10 @@ export default function ChatSessionPage() {
                         </div>
 
                         {/* Bubble */}
-                        <div className="bg-muted/70 dark:bg-muted/30 border border-border/40 text-foreground rounded-2xl px-4 py-2.5 shadow-xs text-left max-w-full relative shrink">
+                        <div
+                          {...getTouchHandlers(msg)}
+                          className="bg-muted/70 dark:bg-muted/30 border border-border/40 text-foreground rounded-2xl px-4 py-2.5 shadow-xs text-left max-w-full relative shrink select-none touch-manipulation"
+                        >
                           <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words w-full">
                             {displayText}
                           </p>
@@ -588,7 +638,10 @@ export default function ChatSessionPage() {
                           )}
                           <div className="flex items-center gap-2 max-w-full w-full">
                             {/* Bubble */}
-                            <div className="bg-muted/70 dark:bg-muted/30 border border-border/40 rounded-2xl px-4 py-2.5 shadow-xs w-fit max-w-full text-left relative shrink">
+                            <div
+                              {...getTouchHandlers(msg)}
+                              className="bg-muted/70 dark:bg-muted/30 border border-border/40 rounded-2xl px-4 py-2.5 shadow-xs w-fit max-w-full text-left relative shrink select-none touch-manipulation"
+                            >
                               <div className="text-[15px] leading-relaxed text-foreground break-words w-full">
                                 {renderContent(displayText)}
                                 {long && (
@@ -913,6 +966,107 @@ export default function ChatSessionPage() {
               </div>
 
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MOBILE TOUCH CONTEXT SHEET ── */}
+      {showTouchSheet && activeTouchMessage && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-end justify-center animate-in fade-in duration-200" onClick={() => setShowTouchSheet(false)}>
+          <div 
+            className="w-full max-w-md bg-card border-t border-border rounded-t-2xl p-5 flex flex-col gap-4 shadow-2xl animate-in slide-in-from-bottom duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handlebar */}
+            <div className="w-12 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-2" />
+
+            {/* Quick Reactions */}
+            <div className="flex items-center justify-between gap-1 bg-muted/30 p-2 rounded-xl border border-border/40">
+              {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => {
+                const isReacted = activeTouchMessage.reactions?.[emoji]?.includes(userId)
+                return (
+                  <button
+                    key={emoji}
+                    onClick={() => {
+                      handleReact(activeTouchMessage.id, emoji)
+                      setShowTouchSheet(false)
+                    }}
+                    className={cn(
+                      "text-2xl w-11 h-11 flex items-center justify-center rounded-full transition-all active:scale-90 hover:bg-muted cursor-pointer border-none bg-transparent outline-none",
+                      isReacted && "bg-primary/10 border border-primary/20 scale-110"
+                    )}
+                  >
+                    {emoji}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Action List */}
+            <div className="flex flex-col bg-muted/20 border border-border/40 rounded-xl divide-y divide-border/40">
+              <button
+                onClick={() => {
+                  setReplyingTo(activeTouchMessage)
+                  setEditingMsg(null)
+                  setShowTouchSheet(false)
+                  if (textareaRef.current) textareaRef.current.focus()
+                }}
+                className="flex items-center gap-3 w-full px-4 py-3.5 text-left text-sm font-medium text-foreground hover:bg-muted/40 transition-colors cursor-pointer border-none bg-transparent outline-none"
+              >
+                <CornerUpLeft className="size-4.5 text-muted-foreground" />
+                Reply
+              </button>
+
+              {activeTouchMessage.sender === "user" && (
+                <button
+                  onClick={() => {
+                    setEditingMsg(activeTouchMessage)
+                    setReplyingTo(null)
+                    setInputText(activeTouchMessage.content)
+                    setShowTouchSheet(false)
+                    if (textareaRef.current) textareaRef.current.focus()
+                  }}
+                  className="flex items-center gap-3 w-full px-4 py-3.5 text-left text-sm font-medium text-foreground hover:bg-muted/40 transition-colors cursor-pointer border-none bg-transparent outline-none"
+                >
+                  <Edit3 className="size-4.5 text-muted-foreground" />
+                  Edit Message
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(activeTouchMessage.content)
+                  setShowTouchSheet(false)
+                }}
+                className="flex items-center gap-3 w-full px-4 py-3.5 text-left text-sm font-medium text-foreground hover:bg-muted/40 transition-colors cursor-pointer border-none bg-transparent outline-none"
+              >
+                <Copy className="size-4.5 text-muted-foreground" />
+                Copy Text
+              </button>
+
+              <div className="flex flex-col gap-1 w-full px-4 py-3.5 text-xs text-muted-foreground bg-muted/5">
+                <div className="flex items-center justify-between">
+                  <span>Sent:</span>
+                  <span className="font-semibold text-foreground">{activeTouchMessage.time}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Status:</span>
+                  <span className="font-semibold text-foreground">
+                    {activeTouchMessage.seen ? "Seen" : "Sent"}
+                    {activeTouchMessage.edited && " (Edited)"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Cancel Button */}
+            <Button
+              variant="outline"
+              onClick={() => setShowTouchSheet(false)}
+              className="w-full text-xs h-10 rounded-xl font-medium"
+            >
+              Cancel
+            </Button>
           </div>
         </div>
       )}

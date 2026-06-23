@@ -8,7 +8,6 @@ import {
   Bell,
   UsersRound,
   Globe,
-  MessageCircleDashed,
   LogOut,
   UserCircle,
   ChevronsUpDown,
@@ -62,10 +61,18 @@ export function SidebarNav() {
   return (
     <Sidebar collapsible="icon" className="border-r border-black/[0.06] dark:border-white/[0.06]" onClick={handleSidebarClick}>
 
-      {/* ── HEADER: logo + collapse trigger ── */}
       <SidebarHeader className="flex-row items-center px-2.5 h-14 shrink-0 relative">
         <div className="flex items-center justify-center size-9 shrink-0">
-          <MessageCircleDashed className="size-5 shrink-0" strokeWidth={2} />
+          <img
+            src="/brand/brand-marks/monochrome/Balck%20Filled.svg"
+            alt="Moots"
+            className="size-7 shrink-0 dark:hidden"
+          />
+          <img
+            src="/brand/brand-marks/monochrome/White%20Filled.svg"
+            alt="Moots"
+            className="size-7 shrink-0 hidden dark:block"
+          />
         </div>
         <SidebarTrigger className="absolute right-2.5 size-9 text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent group-data-[collapsible=icon]:hidden [&_svg]:size-5" />
       </SidebarHeader>
@@ -143,7 +150,7 @@ export function SidebarNav() {
                   </Avatar>
                   <div className="flex flex-col min-w-0">
                     <span className="text-sm font-medium truncate">Harsh Raval</span>
-                    <span className="text-xs text-muted-foreground truncate">harsh@openchat.dev</span>
+                    <span className="text-xs text-muted-foreground truncate">harsh@moots.dev</span>
                   </div>
                 </div>
                 <DropdownMenuSeparator />

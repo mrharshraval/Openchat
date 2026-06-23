@@ -13,11 +13,38 @@ import {
 import { SidebarNav } from "@/components/panels/sidebar-nav"
 import { useIsMobile } from "@/hooks/use-mobile"
 
+import { usePathname } from "next/navigation"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { resolvedTheme, setTheme } = useTheme()
   const isMobile = useIsMobile()
+  const pathname = usePathname()
+
+  React.useEffect(() => {
+    let pageName = ""
+    if (pathname === "/chat") {
+      pageName = "Chats"
+    } else if (pathname === "/chat/waiting") {
+      pageName = "Matching..."
+    } else if (pathname === "/chat/disconnected") {
+      pageName = "Disconnected"
+    } else if (pathname.startsWith("/chat/")) {
+      pageName = "Direct Message"
+    } else if (pathname === "/friends") {
+      pageName = "Friends"
+    } else if (pathname === "/groups") {
+      pageName = "Groups"
+    } else if (pathname === "/notifications") {
+      pageName = "Notifications"
+    }
+
+    if (pageName) {
+      document.title = `${pageName} • Moots`
+    } else {
+      document.title = "Moots"
+    }
+  }, [pathname])
 
   return (
     <SidebarProvider

@@ -26,9 +26,9 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 
 export const metadata: Metadata = {
-  title: "OpenChat - Talk to Someone New Instantly | Anonymous Random Chat",
+  title: "Moots - Talk to Someone New Instantly | Anonymous Random Chat",
   description:
-    "Meet people around the world with OpenChat. No signup required, zero friction. Instant matching for anonymous, safe, and fun chat with strangers.",
+    "Meet people around the world with Moots. No signup required, zero friction. Instant matching for anonymous, safe, and fun chat with strangers.",
   keywords: ["Random Chat", "Anonymous Chat", "Chat With Strangers", "Meet New People Online", "Online Chat"],
 }
 
@@ -43,12 +43,12 @@ export default function LandingPage() {
         "name": "Is signup required?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "No, signup is completely optional. OpenChat is designed as a guest-first platform so you can start chatting anonymously within seconds of landing.",
+          "text": "No, signup is completely optional. Moots is designed as a guest-first platform so you can start chatting anonymously within seconds of landing.",
         },
       },
       {
         "@type": "Question",
-        "name": "Is OpenChat anonymous?",
+        "name": "Is Moots anonymous?",
         "acceptedAnswer": {
           "@type": "Answer",
           "text": "Yes. Guest users are allocated random IDs. We do not require, collect, or display real names, emails, or profile details for random chat sessions.",
@@ -84,11 +84,17 @@ export default function LandingPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-md supports-backdrop-filter:bg-background/60">
         <div className="container mx-auto flex h-14 items-center justify-between px-4 max-w-7xl">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-lg">
-              O
-            </div>
-            <span className="font-semibold text-sm tracking-tight">OpenChat</span>
+          <div className="flex items-center">
+            <img
+              src="/brand/logo-lockups/monochrome/Black%20Filled.svg"
+              alt="Moots"
+              className="h-7 w-auto dark:hidden"
+            />
+            <img
+              src="/brand/logo-lockups/monochrome/White%20Filled.svg"
+              alt="Moots"
+              className="h-7 w-auto hidden dark:block"
+            />
           </div>
 
           <nav className="flex items-center gap-4">
@@ -272,11 +278,11 @@ export default function LandingPage() {
           <Accordion type="single" collapsible className="w-full border-t border-border">
             {[
               {
-                q: "Is signup required to use OpenChat?",
-                a: "No! OpenChat is a guest-first platform. You can start chatting instantly with one click without creating an account or providing any personal details.",
+                q: "Is signup required to use Moots?",
+                a: "No! Moots is a guest-first platform. You can start chatting instantly with one click without creating an account or providing any personal details.",
               },
               {
-                q: "Is OpenChat anonymous?",
+                q: "Is Moots anonymous?",
                 a: "Yes. Guest users are allocated random IDs. We do not require, collect, or display real names, emails, or profile details for random chat sessions.",
               },
               {
@@ -332,13 +338,20 @@ export default function LandingPage() {
 
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold text-xs">
-                O
-              </div>
-              <span className="font-semibold text-xs tracking-tight text-foreground">OpenChat</span>
+              <img
+                src="/brand/brand-marks/monochrome/Balck%20Filled.svg"
+                alt="Moots"
+                className="h-7 w-auto dark:hidden"
+              />
+              <img
+                src="/brand/brand-marks/monochrome/White%20Filled.svg"
+                alt="Moots"
+                className="h-7 w-auto hidden dark:block"
+              />
+              <span className="font-semibold text-xs tracking-tight text-foreground">Moots</span>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              © {new Date().getFullYear()} OpenChat. All rights reserved. Talk anonymously, safely, and instantly.
+              © {new Date().getFullYear()} Moots. All rights reserved. Talk anonymously, safely, and instantly.
             </p>
           </div>
         </div>
