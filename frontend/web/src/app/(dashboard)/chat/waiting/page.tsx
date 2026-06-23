@@ -26,10 +26,10 @@ function MatchingQueueContent() {
 
   React.useEffect(() => {
     // Generate or retrieve persistent userId for queue tracking
-    let uId = sessionStorage.getItem("openchat_userId")
+    let uId = sessionStorage.getItem("moots_userId")
     if (!uId) {
       uId = `user-${Math.random().toString(36).slice(2, 11)}`
-      sessionStorage.setItem("openchat_userId", uId)
+      sessionStorage.setItem("moots_userId", uId)
     }
     setUserId(uId)
 

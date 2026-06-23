@@ -1,7 +1,7 @@
 {
-  "name": "openchat-ws-server",
+  "name": "moots-ws-server",
   "version": "1.0.0",
-  "description": "Standalone WebSocket Echo Server for Openchat",
+  "description": "Standalone WebSocket Echo Server for Moots",
   "main": "server.js",
   "type": "module",
   "scripts": {

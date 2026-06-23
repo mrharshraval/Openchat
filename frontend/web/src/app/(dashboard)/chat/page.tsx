@@ -46,7 +46,7 @@ export default function ChatConfiguratorPage() {
   React.useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search)
     if (searchParams.get("startMatching") === "true") {
-      const saved = sessionStorage.getItem("openchat_interests")
+      const saved = sessionStorage.getItem("moots_interests")
       const targetInterests = saved ? saved.split(",").filter(Boolean) : ["gaming", "music", "movies"]
       if (saved) {
         setInterests(targetInterests)
@@ -106,10 +106,10 @@ export default function ChatConfiguratorPage() {
 
   const getUserId = () => {
     if (typeof window === "undefined") return ""
-    let userId = sessionStorage.getItem("openchat_userId")
+    let userId = sessionStorage.getItem("moots_userId")
     if (!userId) {
       userId = `user-${Math.random().toString(36).slice(2, 11)}`
-      sessionStorage.setItem("openchat_userId", userId)
+      sessionStorage.setItem("moots_userId", userId)
     }
     return userId
   }
@@ -156,7 +156,7 @@ export default function ChatConfiguratorPage() {
   }
 
   const handleStartMatching = () => {
-    sessionStorage.setItem("openchat_interests", interests.join(","))
+    sessionStorage.setItem("moots_interests", interests.join(","))
     setDialogState("matching")
     setSeconds(0)
 

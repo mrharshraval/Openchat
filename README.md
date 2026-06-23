@@ -1,6 +1,6 @@
 # Moots System & WebSocket Architecture Documentation
 
-This repository houses the code for **Moots/OpenChat**, a real-time matchmaking and messaging application. The system is split into two primary segments:
+This repository houses the code for **Moots**, a real-time matchmaking and messaging application. The system is split into two primary segments:
 1. **Frontend**: Next.js client application hosted on `moots.in`.
 2. **Backend**: Standalone production-grade WebSocket server hosted on `ws.moots.in` using the `ws` package.
 
