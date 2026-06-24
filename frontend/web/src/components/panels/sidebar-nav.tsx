@@ -26,7 +26,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import {
   DropdownMenu,
@@ -36,6 +36,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useSession, signOut } from "next-auth/react"
 
 const NAV_ITEMS = [
   { id: "chats",         label: "Chats",         icon: MessageCircle,  href: "/chat" },
@@ -44,9 +45,20 @@ const NAV_ITEMS = [
   { id: "groups",        label: "Groups",        icon: Globe,          href: "/groups" },
 ]
 
+const getUserInitials = (name?: string | null, email?: string | null) => {
+  if (name) {
+    const parts = name.split(" ");
+    if (parts.length > 1) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return parts[0].substring(0, 2).toUpperCase();
+  }
+  if (email) return email.substring(0, 2).toUpperCase();
+  return "U";
+};
+
 export function SidebarNav() {
   const pathname = usePathname()
   const { state, setOpen } = useSidebar()
+  const { data: session } = useSession()
 
   const handleSidebarClick = (e: React.MouseEvent) => {
     if (state === "collapsed") {
@@ -57,6 +69,11 @@ export function SidebarNav() {
       }
     }
   }
+
+  const user = session?.user;
+  const displayName = user?.name || (user as any)?.username || "User";
+  const userSubtitle = (user as any)?.username ? `@${(user as any).username}` : (user?.email || "");
+  const initials = getUserInitials(user?.name, user?.email);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-black/[0.06] dark:border-white/[0.06]" onClick={handleSidebarClick}>
@@ -120,7 +137,7 @@ export function SidebarNav() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
-                  tooltip="Harsh Raval"
+                  tooltip={displayName}
                   className={cn(
                     "h-9 gap-3 text-sm font-normal rounded-lg group/user",
                     "pl-[6px] pr-3 w-full justify-start data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground",
@@ -128,11 +145,12 @@ export function SidebarNav() {
                   )}
                 >
                   <Avatar className="size-6 shrink-0 rounded-full after:rounded-full">
+                    {user?.image && <AvatarImage src={user.image} alt={displayName} />}
                     <AvatarFallback className="text-[10px] font-semibold bg-[#d95f02] text-white rounded-full">
-                      HR
+                      {initials}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="flex-1 truncate text-sm group-data-[collapsible=icon]:hidden">Harsh Raval</span>
+                  <span className="flex-1 truncate text-sm group-data-[collapsible=icon]:hidden">{displayName}</span>
                   <ChevronsUpDown className="ml-auto size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
@@ -144,24 +162,30 @@ export function SidebarNav() {
               >
                 <div className="flex items-center gap-2 px-2 py-1.5">
                   <Avatar className="size-8 shrink-0 rounded-full">
+                    {user?.image && <AvatarImage src={user.image} alt={displayName} />}
                     <AvatarFallback className="text-xs font-semibold bg-[#d95f02] text-white rounded-full">
-                      HR
+                      {initials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-medium truncate">Harsh Raval</span>
-                    <span className="text-xs text-muted-foreground truncate">harsh@moots.dev</span>
+                    <span className="text-sm font-medium truncate">{displayName}</span>
+                    <span className="text-xs text-muted-foreground truncate">{userSubtitle}</span>
                   </div>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                  <DropdownMenuItem className="cursor-pointer">
-                    <UserCircle className="mr-2 size-4" />
-                    <span>Profile</span>
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href="/settings" className="w-full flex items-center">
+                      <UserCircle className="mr-2 size-4" />
+                      <span>Settings</span>
+                    </Link>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
+                <DropdownMenuItem
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  className="text-destructive focus:text-destructive cursor-pointer"
+                >
                   <LogOut className="mr-2 size-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>

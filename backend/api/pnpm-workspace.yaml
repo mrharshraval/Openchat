@@ -1,9 +1,6 @@
 packages: []
 
 allowBuilds:
-  sharp: true
-  unrs-resolver: true
-  msw: false
   '@prisma/engines': true
   prisma: true
   better-sqlite3: true
