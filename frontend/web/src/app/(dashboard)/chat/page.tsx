@@ -3,6 +3,8 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { Plus } from "lucide-react"
+import { getOrInitializeNickname } from "@/lib/nickname"
+import { useSession } from "next-auth/react"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"
@@ -22,6 +24,7 @@ const POPULAR_TOPICS = [
 
 export default function ChatConfiguratorPage() {
   const router = useRouter()
+  const { data: session } = useSession()
   
   // Config state
   const [interests, setInterests] = React.useState<string[]>(["gaming", "music", "movies"])
@@ -71,6 +74,8 @@ export default function ChatConfiguratorPage() {
             type: "join-queue",
             payload: {
               userId,
+              nickname: getOrInitializeNickname(),
+              username: session?.user?.name || (session?.user as any)?.username || undefined,
               interests: targetInterests,
               lang: "en",
               country: "global",
@@ -176,6 +181,8 @@ export default function ChatConfiguratorPage() {
           type: "join-queue",
           payload: {
             userId,
+            nickname: getOrInitializeNickname(),
+            username: session?.user?.name || (session?.user as any)?.username || undefined,
             interests,
             lang: "en",
             country: "global",
@@ -246,7 +253,7 @@ export default function ChatConfiguratorPage() {
   return (
     <div className="flex-1 flex items-center justify-center p-4 lg:p-8 bg-background">
       <Dialog open={true} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[400px] border border-border bg-card p-5 shadow-lg rounded-xl flex flex-col gap-4">
+        <DialogContent showCloseButton={false} className="flex! flex-col! p-6! gap-4! max-w-[400px] sm:max-w-[400px]! w-full rounded-3xl bg-background border border-border select-none shadow-lg">
           
           {dialogState === "selection" && (
             <>

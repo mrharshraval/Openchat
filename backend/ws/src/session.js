@@ -6,11 +6,19 @@ export class SessionService {
     this.sessions = new Map(); // sessionId -> sessionData
   }
 
-  createSession(userId1, userId2) {
+  createSession(userId1, userId2, nickname1 = "Stranger", nickname2 = "Stranger", username1 = null, username2 = null) {
     const sessionId = `session-${crypto.randomUUID()}`;
     const session = {
       sessionId,
       users: [userId1, userId2],
+      nicknames: {
+        [userId1]: nickname1,
+        [userId2]: nickname2,
+      },
+      usernames: {
+        [userId1]: username1,
+        [userId2]: username2,
+      },
       messages: [],
       createdAt: new Date(),
       activeConnections: new Map(), // userId -> connectionId
@@ -32,6 +40,8 @@ export class SessionService {
       session = {
         sessionId,
         users: [userId],
+        nicknames: {},
+        usernames: {},
         messages: [],
         createdAt: new Date(),
         activeConnections: new Map(),
@@ -41,6 +51,12 @@ export class SessionService {
     } else {
       if (!session.users.includes(userId)) {
         session.users.push(userId);
+      }
+      if (!session.nicknames) {
+        session.nicknames = {};
+      }
+      if (!session.usernames) {
+        session.usernames = {};
       }
     }
 

@@ -18,6 +18,21 @@ function ThemeProvider({
   children,
   ...props
 }: React.ComponentProps<typeof NextThemesProvider>) {
+  React.useEffect(() => {
+    const accent = localStorage.getItem("moots-accent") || "default";
+    document.documentElement.setAttribute("data-accent", accent);
+
+    const handleAccentChange = () => {
+      const newAccent = localStorage.getItem("moots-accent") || "default";
+      document.documentElement.setAttribute("data-accent", newAccent);
+    };
+
+    window.addEventListener("moots-accent-changed", handleAccentChange);
+    return () => {
+      window.removeEventListener("moots-accent-changed", handleAccentChange);
+    };
+  }, []);
+
   return (
     <NextThemesProvider
       attribute="class"

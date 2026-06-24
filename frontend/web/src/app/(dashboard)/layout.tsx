@@ -15,11 +15,38 @@ import { useIsMobile } from "@/hooks/use-mobile"
 
 import { usePathname } from "next/navigation"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { useSession } from "next-auth/react"
+import { getOrInitializeNickname } from "@/lib/nickname"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { resolvedTheme, setTheme } = useTheme()
   const isMobile = useIsMobile()
   const pathname = usePathname()
+  const { data: session } = useSession()
+
+  const [displayName, setDisplayName] = React.useState("Guest")
+  const [partnerName, setPartnerName] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    const user = session?.user
+    if (user) {
+      setDisplayName(user.name || (user as any).username || user.email?.split("@")[0] || "User")
+    } else {
+      setDisplayName(getOrInitializeNickname())
+    }
+  }, [session])
+
+  React.useEffect(() => {
+    const handlePartner = (e: Event) => {
+      const customEvent = e as CustomEvent
+      const { username, nickname } = customEvent.detail
+      setPartnerName(username || nickname || null)
+    }
+    window.addEventListener("moots:partner-loaded", handlePartner)
+    return () => {
+      window.removeEventListener("moots:partner-loaded", handlePartner)
+    }
+  }, [])
 
   React.useEffect(() => {
     let pageName = ""
@@ -45,6 +72,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       document.title = "Moots"
     }
   }, [pathname])
+
+  const initials = displayName.substring(0, 2).toUpperCase()
 
   return (
     <SidebarProvider
@@ -77,9 +106,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
             <div className="flex items-center gap-2.5">
               <Avatar className="size-8">
-                <AvatarFallback className="text-sm font-semibold bg-foreground/10">H</AvatarFallback>
+                <AvatarFallback className="text-sm font-semibold bg-foreground/10">
+                  {partnerName ? partnerName.substring(0, 2).toUpperCase() : initials}
+                </AvatarFallback>
               </Avatar>
-              <span className="text-sm font-semibold leading-none">Harsh</span>
+              <span className="text-sm font-semibold leading-none">
+                {partnerName ? partnerName : displayName}
+              </span>
             </div>
           </div>
 

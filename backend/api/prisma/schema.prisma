@@ -14,6 +14,7 @@ model User {
   emailVerified DateTime?
   password      String?   // Hashed password
   image         String?
+  bio           String?
   lastIp        String?
   userAgent     String?
   lastLoginAt   DateTime?

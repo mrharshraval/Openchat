@@ -35,8 +35,15 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu"
 import { useSession, signOut } from "next-auth/react"
+import { getOrInitializeNickname } from "@/lib/nickname"
+import { SettingsDialog } from "@/components/dialogs/settings-dialog"
+import { ProfileDialog } from "@/components/dialogs/profile-dialog"
 
 const NAV_ITEMS = [
   { id: "chats",         label: "Chats",         icon: MessageCircle,  href: "/chat" },
@@ -59,6 +66,9 @@ export function SidebarNav() {
   const pathname = usePathname()
   const { state, setOpen } = useSidebar()
   const { data: session } = useSession()
+  const [helpOpen, setHelpOpen] = React.useState(false)
+  const [settingsOpen, setSettingsOpen] = React.useState(false)
+  const [profileOpen, setProfileOpen] = React.useState(false)
 
   const handleSidebarClick = (e: React.MouseEvent) => {
     if (state === "collapsed") {
@@ -71,9 +81,18 @@ export function SidebarNav() {
   }
 
   const user = session?.user;
-  const displayName = user?.name || (user as any)?.username || "User";
-  const userSubtitle = (user as any)?.username ? `@${(user as any).username}` : (user?.email || "");
-  const initials = getUserInitials(user?.name, user?.email);
+  const isGuest = !user;
+  const displayName = isGuest 
+    ? getOrInitializeNickname() 
+    : (user.name || (user as any).username || user.email?.split("@")[0] || "User");
+  const username = (user as any)?.username;
+  const userSubtitle = isGuest 
+    ? "Guest" 
+    : (username ? (username.startsWith("@") ? username : `@${username}`) : (user.email || ""));
+  const initials = user ? getUserInitials(user?.name, user?.email) : getUserInitials(displayName, null);
+
+  const side = state === "collapsed" ? "right" : "top";
+  const align = state === "collapsed" ? "end" : "start";
 
   return (
     <Sidebar collapsible="icon" className="border-r border-black/[0.06] dark:border-white/[0.06]" onClick={handleSidebarClick}>
@@ -134,7 +153,7 @@ export function SidebarNav() {
       <SidebarFooter className="px-2.5 py-3">
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
+            <DropdownMenu onOpenChange={(open) => { if (!open) { setHelpOpen(false); } }}>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   tooltip={displayName}
@@ -150,13 +169,16 @@ export function SidebarNav() {
                       {initials}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="flex-1 truncate text-sm group-data-[collapsible=icon]:hidden">{displayName}</span>
+                  <div className="flex flex-col min-w-0 flex-1 leading-none text-left group-data-[collapsible=icon]:hidden">
+                    <span className="text-sm font-medium truncate">{displayName}</span>
+                    <span className="text-[10px] text-muted-foreground truncate mt-0.5">{userSubtitle}</span>
+                  </div>
                   <ChevronsUpDown className="ml-auto size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                side="right"
-                align="end"
+                side={side}
+                align={align}
                 sideOffset={8}
                 className="w-56"
               >
@@ -173,22 +195,152 @@ export function SidebarNav() {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link href="/settings" className="w-full flex items-center">
-                      <UserCircle className="mr-2 size-4" />
-                      <span>Settings</span>
-                    </Link>
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => signOut({ callbackUrl: "/login" })}
-                  className="text-destructive focus:text-destructive cursor-pointer"
-                >
-                  <LogOut className="mr-2 size-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
+                
+                {isGuest ? (
+                  <>
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                        <Link href="/signup" className="w-full flex items-center">
+                          <span>Create Account</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                        <Link href="/login" className="w-full flex items-center">
+                          <span>Sign In</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuSub open={helpOpen} onOpenChange={setHelpOpen}>
+                      <DropdownMenuSubTrigger
+                        className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer"
+                        onPointerMove={(e) => e.preventDefault()}
+                        onPointerLeave={(e) => e.preventDefault()}
+                        onPointerEnter={(e) => e.preventDefault()}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setHelpOpen((prev) => !prev);
+                        }}
+                      >
+                        <span>Help</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent className="w-48">
+                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                            <Link href="/help" className="w-full flex items-center">
+                              <span>Help Center</span>
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                            <a href="mailto:support@moots.in" className="w-full flex items-center">
+                              <span>Contact Support</span>
+                            </a>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                            <Link href="/safety" className="w-full flex items-center">
+                              <span>Community Guidelines</span>
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                            <Link href="/privacy" className="w-full flex items-center">
+                              <span>Privacy Policy</span>
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                            <Link href="/terms" className="w-full flex items-center">
+                              <span>Terms of Service</span>
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                            <a href="mailto:support@moots.in?subject=Report%20a%20Problem" className="w-full flex items-center">
+                              <span>Report a Problem</span>
+                            </a>
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem 
+                        onClick={() => setProfileOpen(true)}
+                        className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer"
+                      >
+                        <span>Profile</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setSettingsOpen(true)}
+                        className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer"
+                      >
+                        <span>Settings</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuSub open={helpOpen} onOpenChange={setHelpOpen}>
+                      <DropdownMenuSubTrigger
+                        className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer"
+                        onPointerMove={(e) => e.preventDefault()}
+                        onPointerLeave={(e) => e.preventDefault()}
+                        onPointerEnter={(e) => e.preventDefault()}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setHelpOpen((prev) => !prev);
+                        }}
+                      >
+                        <span>Help</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent className="w-48">
+                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                            <Link href="/help" className="w-full flex items-center">
+                              <span>Help Center</span>
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                            <a href="mailto:support@moots.in" className="w-full flex items-center">
+                              <span>Contact Support</span>
+                            </a>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                            <Link href="/safety" className="w-full flex items-center">
+                              <span>Community Guidelines</span>
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                            <Link href="/privacy" className="w-full flex items-center">
+                              <span>Privacy Policy</span>
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                            <Link href="/terms" className="w-full flex items-center">
+                              <span>Terms of Service</span>
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                            <a href="mailto:support@moots.in?subject=Report%20a%20Problem" className="w-full flex items-center">
+                              <span>Report a Problem</span>
+                            </a>
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => signOut({ callbackUrl: "/login" })}
+                      className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer text-destructive focus:text-destructive"
+                    >
+                      <LogOut className="mr-2 size-4" />
+                      <span>Sign Out</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
@@ -207,6 +359,8 @@ export function SidebarNav() {
           setOpen(true)
         }}
       />
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <ProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
     </Sidebar>
   )
 }

@@ -67,11 +67,13 @@ export class MessagingService {
 
     switch (type) {
       case "join-queue": {
-        const { interests, lang, country } = payload;
+        const { interests, lang, country, nickname, username } = payload;
         
         // Update connection type & metadata
         registry.updateMetadata(connectionId, {
           userId,
+          nickname,
+          username,
           connectionType: "queue",
         });
 
@@ -79,12 +81,12 @@ export class MessagingService {
         matchmakingService.removeUser(userId);
 
         // Add to queue
-        matchmakingService.addUser(userId, { interests, lang, country }, connectionId);
+        matchmakingService.addUser(userId, { interests, lang, country, nickname, username }, connectionId);
 
         // Try to match
         const match = matchmakingService.findMatch(userId);
         if (match) {
-          const session = sessionService.createSession(userId, match.userId);
+          const session = sessionService.createSession(userId, match.userId, nickname, match.nickname, username, match.username);
 
           // Get socket for the peer
           const peerConn = registry.get(match.connectionId);
@@ -93,7 +95,12 @@ export class MessagingService {
           conn.ws.send(
             JSON.stringify({
               type: "match-found",
-              payload: { sessionId: session.sessionId, peerId: match.userId },
+              payload: {
+                sessionId: session.sessionId,
+                peerId: match.userId,
+                peerNickname: match.nickname || "Stranger",
+                peerUsername: match.username || null,
+              },
             })
           );
 
@@ -101,7 +108,12 @@ export class MessagingService {
             peerConn.ws.send(
               JSON.stringify({
                 type: "match-found",
-                payload: { sessionId: session.sessionId, peerId: userId },
+                payload: {
+                  sessionId: session.sessionId,
+                  peerId: userId,
+                  peerNickname: nickname || "Stranger",
+                  peerUsername: username || null,
+                },
               })
             );
           }
@@ -124,8 +136,11 @@ export class MessagingService {
       }
 
       case "join-chat": {
+        const { nickname, username } = payload;
         registry.updateMetadata(connectionId, {
           userId,
+          nickname,
+          username,
           sessionId,
           connectionType: "chat",
         });
@@ -140,20 +155,36 @@ export class MessagingService {
             partnerWs.send(
               JSON.stringify({
                 type: "partner-joined",
-                payload: { partnerId: joinedUserId },
+                payload: {
+                  partnerId: joinedUserId,
+                  partnerNickname: nickname || "Stranger",
+                  partnerUsername: username || null,
+                },
               })
             );
           }
         );
 
+        // Save nickname in session if available
+        if (session) {
+          if (!session.nicknames) session.nicknames = {};
+          if (!session.usernames) session.usernames = {};
+          if (nickname) session.nicknames[userId] = nickname;
+          if (username) session.usernames[userId] = username;
+        }
+
         // Send chat history to user
         const partnerId = session.users.find((id) => id !== userId);
+        const partnerNickname = session.nicknames ? session.nicknames[partnerId] : "Stranger";
+        const partnerUsername = session.usernames ? session.usernames[partnerId] : null;
         conn.ws.send(
           JSON.stringify({
             type: "chat-history",
             payload: {
               messages: session.messages,
               partnerJoined: partnerId ? session.activeConnections.has(partnerId) : false,
+              partnerNickname: partnerNickname || "Stranger",
+              partnerUsername: partnerUsername || null,
             },
           })
         );

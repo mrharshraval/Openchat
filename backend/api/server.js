@@ -182,6 +182,8 @@ app.post("/api/auth/login", async (req, res) => {
         email: updatedUser.email,
         image: updatedUser.image,
         username: updatedUser.username,
+        bio: updatedUser.bio,
+        createdAt: updatedUser.createdAt,
       },
     });
   } catch (error) {
@@ -193,7 +195,7 @@ app.post("/api/auth/login", async (req, res) => {
 // 4. SECURE: Update Profile Settings
 app.put("/api/user/settings", async (req, res) => {
   try {
-    const { userId, username, name } = req.body;
+    const { userId, username, name, bio, image } = req.body;
     if (!userId) {
       return res.status(400).json({ error: "User ID is required" });
     }
@@ -219,8 +221,10 @@ app.put("/api/user/settings", async (req, res) => {
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        ...(username ? { username } : {}),
-        ...(name ? { name } : {}),
+        ...(username !== undefined ? { username } : {}),
+        ...(name !== undefined ? { name } : {}),
+        ...(bio !== undefined ? { bio } : {}),
+        ...(image !== undefined ? { image } : {}),
       },
     });
 
@@ -230,6 +234,8 @@ app.put("/api/user/settings", async (req, res) => {
         id: updatedUser.id,
         username: updatedUser.username,
         name: updatedUser.name,
+        bio: updatedUser.bio,
+        image: updatedUser.image,
       },
     });
   } catch (error) {

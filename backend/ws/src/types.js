@@ -4,6 +4,8 @@ import { z } from "zod";
 
 export const JoinQueuePayloadSchema = z.object({
   userId: z.string().min(1),
+  nickname: z.string().optional(),
+  username: z.string().optional(),
   interests: z.array(z.string()),
   lang: z.string().min(1),
   country: z.string().min(1),
@@ -15,6 +17,8 @@ export const CancelQueuePayloadSchema = z.object({
 
 export const JoinChatPayloadSchema = z.object({
   userId: z.string().min(1),
+  nickname: z.string().optional(),
+  username: z.string().optional(),
   sessionId: z.string().min(1),
 });
 

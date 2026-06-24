@@ -9,7 +9,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { username, name } = await req.json();
+    const { username, name, bio, image } = await req.json();
 
     const res = await fetch("http://localhost:3002/api/user/settings", {
       method: "PUT",
@@ -18,6 +18,8 @@ export async function PUT(req: Request) {
         userId: session.user.id,
         username,
         name,
+        bio,
+        image,
       }),
     });
 

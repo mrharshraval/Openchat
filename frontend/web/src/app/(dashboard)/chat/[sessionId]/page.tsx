@@ -2,6 +2,8 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
+import { getOrInitializeNickname } from "@/lib/nickname"
+import { useSession } from "next-auth/react"
 import {
   RotateCcw,
   MoreHorizontal,
@@ -76,12 +78,42 @@ export default function ChatSessionPage() {
   const params = useParams()
   const sessionId = params?.sessionId as string
 
+  const { data: session } = useSession()
   const [userId, setUserId] = React.useState("")
   const [messages, setMessages] = React.useState<Message[]>([])
+  const [peerNickname, setPeerNickname] = React.useState("Stranger")
+  const [peerUsername, setPeerUsername] = React.useState<string | null>(null)
+
+  const peerDisplayName = React.useMemo(() => {
+    return peerUsername || peerNickname
+  }, [peerUsername, peerNickname])
 
   const [pageState, setPageState] = React.useState<"active" | "disconnected" | "matching" | "matched">("active")
   const [matchingSeconds, setMatchingSeconds] = React.useState(0)
   const [interests, setInterests] = React.useState<string[]>([])
+
+  React.useEffect(() => {
+    if (pageState === "active") {
+      window.dispatchEvent(
+        new CustomEvent("moots:partner-loaded", {
+          detail: {
+            username: peerUsername,
+            nickname: peerNickname,
+          },
+        })
+      )
+    }
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent("moots:partner-loaded", {
+          detail: {
+            username: null,
+            nickname: null,
+          },
+        })
+      )
+    }
+  }, [peerUsername, peerNickname, pageState])
 
   const [inputText, setInputText] = React.useState("")
   const [replyingTo, setReplyingTo] = React.useState<Message | null>(null)
@@ -169,7 +201,12 @@ export default function ChatSessionPage() {
       ws.send(
         JSON.stringify({
           type: "join-chat",
-          payload: { userId: uId, sessionId },
+          payload: {
+            userId: uId,
+            nickname: getOrInitializeNickname(),
+            username: session?.user?.name || (session?.user as any)?.username || undefined,
+            sessionId
+          },
         })
       )
       setTimeout(sendReadReceipt, 100)
@@ -199,6 +236,12 @@ export default function ChatSessionPage() {
                 : undefined,
             }))
             setMessages(history)
+            if (payload.partnerNickname) {
+              setPeerNickname(payload.partnerNickname)
+            }
+            if (payload.partnerUsername) {
+              setPeerUsername(payload.partnerUsername)
+            }
             sendReadReceipt()
             break
           }
@@ -253,6 +296,16 @@ export default function ChatSessionPage() {
 
           case "partner-typing": {
             setIsTyping(payload.isTyping)
+            break
+          }
+
+          case "partner-joined": {
+            if (payload.partnerNickname) {
+              setPeerNickname(payload.partnerNickname)
+            }
+            if (payload.partnerUsername) {
+              setPeerUsername(payload.partnerUsername)
+            }
             break
           }
 
@@ -485,7 +538,7 @@ export default function ChatSessionPage() {
                       {msg.replyTo && (
                         <div className="bg-muted/40 rounded-lg px-3 py-1.5 border-r-2 border-primary text-xs text-right max-w-full mb-1 opacity-80">
                           <span className="block font-semibold text-[10px] text-muted-foreground mb-0.5">
-                            Replied to {msg.replyTo.sender === "user" ? "yourself" : "stranger"}
+                            Replied to {msg.replyTo.sender === "user" ? "yourself" : peerDisplayName}
                           </span>
                           <span className="truncate block max-w-xs text-foreground/80">
                             {msg.replyTo.content}
@@ -578,9 +631,9 @@ export default function ChatSessionPage() {
                                 const hasYou = userIds.includes(userId)
                                 const hasStranger = userIds.some((id) => id !== userId)
                                 let who = ""
-                                if (hasYou && hasStranger) who = "You and stranger"
+                                if (hasYou && hasStranger) who = `You and ${peerDisplayName}`
                                 else if (hasYou) who = "You"
-                                else if (hasStranger) who = "Stranger"
+                                else if (hasStranger) who = peerDisplayName
 
                                 return (
                                   <Tooltip key={emoji}>
@@ -623,13 +676,15 @@ export default function ChatSessionPage() {
                       {/* Horizontal row aligning Avatar with bottom of Bubble */}
                       <div className="flex items-end gap-3 w-full">
                         <Avatar className="size-8 shrink-0">
-                          <AvatarFallback className="text-xs font-semibold bg-foreground/10">S</AvatarFallback>
+                          <AvatarFallback className="text-xs font-semibold bg-foreground/10">
+                            {peerDisplayName.substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                           {msg.replyTo && (
                             <div className="bg-muted/40 rounded-lg px-3 py-1.5 border-l-2 border-primary text-xs text-left max-w-full mb-0.5 opacity-80">
                               <span className="block font-semibold text-[10px] text-muted-foreground mb-0.5">
-                                Replied to {msg.replyTo.sender === "user" ? "you" : "stranger"}
+                                Replied to {msg.replyTo.sender === "user" ? "you" : peerDisplayName}
                               </span>
                               <span className="truncate block max-w-xs text-foreground/80">
                                 {msg.replyTo.content}
@@ -660,9 +715,9 @@ export default function ChatSessionPage() {
                                     const hasYou = userIds.includes(userId)
                                     const hasStranger = userIds.some((id) => id !== userId)
                                     let who = ""
-                                    if (hasYou && hasStranger) who = "You and stranger"
+                                    if (hasYou && hasStranger) who = `You and ${peerDisplayName}`
                                     else if (hasYou) who = "You"
-                                    else if (hasStranger) who = "Stranger"
+                                    else if (hasStranger) who = peerDisplayName
 
                                     return (
                                       <Tooltip key={emoji}>
@@ -751,7 +806,9 @@ export default function ChatSessionPage() {
             {isTyping && pageState === "active" && (
               <div className="flex items-start gap-3 justify-start">
                 <Avatar className="size-8 shrink-0">
-                  <AvatarFallback className="text-xs font-semibold bg-foreground/10">S</AvatarFallback>
+                  <AvatarFallback className="text-xs font-semibold bg-foreground/10">
+                    {peerDisplayName.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <TypingIndicator />
               </div>
@@ -764,7 +821,7 @@ export default function ChatSessionPage() {
                   <div className="flex flex-col items-center gap-1.5">
                     <h3 className="text-md font-bold tracking-tight text-foreground">Conversation Ended</h3>
                     <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      Your chat partner left.
+                      {peerDisplayName} left.
                     </p>
                   </div>
                   <div className="flex flex-col gap-2.5 w-full mt-2">
@@ -898,7 +955,7 @@ export default function ChatSessionPage() {
               <div className="flex items-center justify-between bg-muted/50 rounded-xl px-4 py-2 border border-border/40 text-xs">
                 <div className="flex flex-col min-w-0">
                   <span className="font-semibold text-[10px] text-muted-foreground mb-0.5">
-                    Replying to {replyingTo.sender === "user" ? "yourself" : "stranger"}
+                    Replied to {replyingTo.sender === "user" ? "yourself" : peerDisplayName}
                   </span>
                   <span className="text-foreground truncate max-w-lg">
                     {replyingTo.content}
@@ -940,7 +997,7 @@ export default function ChatSessionPage() {
                         <RotateCcw className="size-5" strokeWidth={1.75} />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>New stranger</TooltipContent>
+                    <TooltipContent>New partner</TooltipContent>
                   </Tooltip>
                 </div>
 

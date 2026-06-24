@@ -191,9 +191,8 @@ export default function GroupsPage() {
           )}
         </div>
 
-        {/* Create Group Dialog Modal */}
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-          <DialogContent className="sm:max-w-[425px] border border-border bg-card rounded-xl">
+          <DialogContent className="grid! max-w-[425px] sm:max-w-[425px]! w-full rounded-3xl bg-background border border-border select-none p-6">
             <DialogHeader className="text-left">
               <DialogTitle className="text-base font-bold text-foreground">Create Community Group</DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-1">
