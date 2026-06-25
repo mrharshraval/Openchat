@@ -120,15 +120,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={false} className="flex! p-0! gap-0! max-w-3xl sm:max-w-3xl! w-full h-[600px] overflow-hidden rounded-3xl bg-background text-foreground border border-border select-none">
+      <DialogContent showCloseButton={false} className="flex flex-col sm:flex-row p-0! gap-0! max-w-3xl sm:max-w-3xl! w-full h-[85vh] sm:h-[600px] overflow-hidden rounded-3xl bg-background text-foreground border border-border select-none">
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <DialogDescription className="sr-only">
           Manage your account preferences, notifications, theme personalization, privacy, and security settings.
         </DialogDescription>
-        {/* Left Side: Sidebar */}
-        <div className="w-52 md:w-56 bg-muted/20 p-4 border-r border-border flex flex-col gap-2 relative shrink-0">
-          {/* Close button at top-left matching screenshot style */}
-          <div className="mb-4">
+        {/* Left Side: Sidebar / Top Bar on Mobile */}
+        <div className="w-full sm:w-52 md:w-56 bg-muted/20 p-4 border-b sm:border-b-0 sm:border-r border-border flex flex-col gap-3 relative shrink-0">
+          {/* Header row: title and close button on mobile */}
+          <div className="flex items-center justify-between sm:mb-4">
+            <h3 className="text-base font-semibold capitalize sm:hidden">{activeTab}</h3>
             <DialogClose asChild>
               <button className="h-8 w-8 rounded-lg bg-muted hover:bg-accent flex items-center justify-center cursor-pointer border border-border transition-colors text-muted-foreground hover:text-foreground">
                 <X className="size-4" />
@@ -136,8 +137,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             </DialogClose>
           </div>
 
-          {/* Navigation Links with identical sidebar design language */}
-          <nav className="flex flex-col gap-1 flex-1">
+          {/* Navigation Links */}
+          <nav 
+            className="flex flex-row sm:flex-col gap-1.5 flex-1 overflow-x-auto sm:overflow-x-visible [&::-webkit-scrollbar]:hidden pb-1 sm:pb-0"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
             {menuItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -145,13 +149,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex h-9 items-center gap-3 px-3 rounded-lg text-sm font-normal cursor-pointer transition-all ${
+                  className={`flex h-9 shrink-0 items-center gap-2 px-3 rounded-lg text-sm font-normal cursor-pointer transition-all ${
                     isActive
                       ? "bg-accent text-accent-foreground font-medium shadow-xs"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
-                  <Icon className="size-4.5 shrink-0" strokeWidth={isActive ? 2 : 1.75} />
+                  <Icon className="size-4 shrink-0" strokeWidth={isActive ? 2 : 1.75} />
                   <span>{item.label}</span>
                 </button>
               );
@@ -162,13 +166,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         {/* Right Side: Selected Menu Content */}
         <div className="flex-1 bg-background flex flex-col min-w-0">
           {/* Header */}
-          <div className="px-8 pt-6 pb-4 shrink-0">
+          <div className="px-4 sm:px-8 pt-4 sm:pt-6 pb-2 sm:pb-4 shrink-0">
             <h3 className="text-lg font-semibold capitalize">{activeTab}</h3>
             <div className="h-px bg-border mt-4" />
           </div>
 
           {/* Content Area */}
-          <div className="flex-1 overflow-y-auto px-8 pb-8 space-y-6">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-8 pb-6 sm:pb-8 space-y-6">
             
             {/* ── GENERAL TAB ── */}
             {activeTab === "general" && (
