@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { Info } from "lucide-react"
-import { useTheme } from "next-themes"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -19,7 +18,6 @@ import { useSession } from "next-auth/react"
 import { getOrInitializeNickname } from "@/lib/nickname"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { resolvedTheme, setTheme } = useTheme()
   const isMobile = useIsMobile()
   const pathname = usePathname()
   const { data: session } = useSession()
@@ -116,20 +114,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
 
-          {/* RIGHT: Info / theme toggle */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-                className="size-9 text-muted-foreground hover:text-foreground"
-              >
-                <Info className="size-5" strokeWidth={1.75} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Toggle theme</TooltipContent>
-          </Tooltip>
         </header>
 
         {/* ── PAGE CONTENT ── */}
