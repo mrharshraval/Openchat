@@ -16,11 +16,17 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreeAge, setAgreeAge] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       toast.error("Please fill in all fields");
+      return;
+    }
+    if (!agreeAge || !agreeTerms) {
+      toast.error("Please agree to the terms and age requirements to continue");
       return;
     }
 
@@ -97,11 +103,48 @@ export default function SignupPage() {
                    disabled={loading}
                  />
                </div>
-             </div>
-             <Button type="submit" className="w-full h-10 text-xs font-semibold" disabled={loading}>
-               {loading ? "Sending OTP..." : "Sign Up"}
-             </Button>
-           </form>
+              </div>
+              <div className="space-y-3 py-1">
+                <div className="flex items-start gap-2.5">
+                  <input
+                    id="agree-age"
+                    type="checkbox"
+                    checked={agreeAge}
+                    onChange={(e) => setAgreeAge(e.target.checked)}
+                    className="mt-0.5 rounded border-border text-primary focus:ring-primary size-4 shrink-0 cursor-pointer"
+                    required
+                  />
+                  <Label htmlFor="agree-age" className="text-xs text-muted-foreground font-normal leading-normal cursor-pointer select-none">
+                    I confirm that I meet the minimum age requirement of 13 years (or local age of consent).
+                  </Label>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <input
+                    id="agree-terms"
+                    type="checkbox"
+                    checked={agreeTerms}
+                    onChange={(e) => setAgreeTerms(e.target.checked)}
+                    className="mt-0.5 rounded border-border text-primary focus:ring-primary size-4 shrink-0 cursor-pointer"
+                    required
+                  />
+                  <Label htmlFor="agree-terms" className="text-xs text-muted-foreground font-normal leading-normal cursor-pointer select-none">
+                    I agree to the{" "}
+                    <Link href="/policies/terms" className="text-primary hover:underline font-semibold" target="_blank">
+                      Terms of Use
+                    </Link>{" "}
+                    and acknowledge the{" "}
+                    <Link href="/policies/privacy" className="text-primary hover:underline font-semibold" target="_blank">
+                      Privacy Policy
+                    </Link>
+                    , consenting to the processing of my data.
+                  </Label>
+                </div>
+              </div>
+              <Button type="submit" className="w-full h-10 text-xs font-semibold" disabled={loading || !agreeAge || !agreeTerms}>
+                {loading ? "Sending OTP..." : "Sign Up"}
+              </Button>
+            </form>
         </CardContent>
         <CardFooter className="flex flex-wrap items-center justify-center gap-1 border-t border-border/40 p-4 text-center">
           <span className="text-[11px] text-muted-foreground">Already have an account?</span>

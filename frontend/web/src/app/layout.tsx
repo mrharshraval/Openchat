@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils";
+import { CookieBanner } from "@/components/panels/cookie-banner"
 
 export const metadata: Metadata = {
   title: {
@@ -51,6 +52,7 @@ export default function RootLayout({
             <TooltipProvider>
               {children}
               <Toaster />
+              <CookieBanner />
             </TooltipProvider>
           </ThemeProvider>
         </SessionProvider>

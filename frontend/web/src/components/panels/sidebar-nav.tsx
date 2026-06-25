@@ -175,7 +175,7 @@ export function SidebarNav() {
                 >
                   <Avatar className="size-6 shrink-0 rounded-full after:rounded-full">
                     {user?.image && <AvatarImage src={user.image} alt={displayName} />}
-                    <AvatarFallback className="text-[10px] font-semibold bg-[#d95f02] text-white rounded-full">
+                    <AvatarFallback className="text-[10px] font-semibold bg-muted text-muted-foreground rounded-full">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
@@ -198,7 +198,7 @@ export function SidebarNav() {
                 <div className="flex items-center gap-2 px-2 py-1.5">
                   <Avatar className="size-8 shrink-0 rounded-full">
                     {user?.image && <AvatarImage src={user.image} alt={displayName} />}
-                    <AvatarFallback className="text-xs font-semibold bg-[#d95f02] text-white rounded-full">
+                    <AvatarFallback className="text-xs font-semibold bg-muted text-muted-foreground rounded-full">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
@@ -251,18 +251,18 @@ export function SidebarNav() {
                             </a>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
-                            <Link href="/safety" className="w-full flex items-center">
+                            <Link href="/policies/community-guidelines" className="w-full flex items-center">
                               <span>Community Guidelines</span>
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="my-1 bg-border/50" />
                           <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
-                            <Link href="/privacy" className="w-full flex items-center">
+                            <Link href="/policies/privacy" className="w-full flex items-center">
                               <span>Privacy Policy</span>
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
-                            <Link href="/terms" className="w-full flex items-center">
+                            <Link href="/policies/terms" className="w-full flex items-center">
                               <span>Terms of Service</span>
                             </Link>
                           </DropdownMenuItem>
@@ -320,18 +320,18 @@ export function SidebarNav() {
                             </a>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
-                            <Link href="/safety" className="w-full flex items-center">
+                            <Link href="/policies/community-guidelines" className="w-full flex items-center">
                               <span>Community Guidelines</span>
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="my-1 bg-border/50" />
                           <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
-                            <Link href="/privacy" className="w-full flex items-center">
+                            <Link href="/policies/privacy" className="w-full flex items-center">
                               <span>Privacy Policy</span>
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
-                            <Link href="/terms" className="w-full flex items-center">
+                            <Link href="/policies/terms" className="w-full flex items-center">
                               <span>Terms of Service</span>
                             </Link>
                           </DropdownMenuItem>

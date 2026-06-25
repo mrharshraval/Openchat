@@ -113,7 +113,7 @@ export default function ProfilePage() {
               {image ? (
                 <AvatarImage src={image} alt={name || "User"} />
               ) : (
-                <AvatarFallback className="text-xl font-bold bg-[#d95f02] text-white">
+                <AvatarFallback className="text-xl font-bold bg-muted text-muted-foreground">
                   {initials}
                 </AvatarFallback>
               )}

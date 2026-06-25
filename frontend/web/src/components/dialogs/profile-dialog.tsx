@@ -115,7 +115,7 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                 {image ? (
                   <AvatarImage src={image} alt={name || "User"} className="object-cover" />
                 ) : (
-                  <AvatarFallback className="text-4xl font-bold bg-[#d95f02] text-white">
+                  <AvatarFallback className="text-4xl font-bold bg-muted text-muted-foreground">
                     {initials}
                   </AvatarFallback>
                 )}

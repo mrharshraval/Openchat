@@ -12,6 +12,7 @@ import {
 import { SidebarNav } from "@/components/panels/sidebar-nav"
 import { useIsMobile } from "@/hooks/use-mobile"
 
+import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useSession } from "next-auth/react"
@@ -113,6 +114,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </span>
             </div>
           </div>
+
+          {/* RIGHT: auth buttons when not logged in */}
+          {!session && (
+            <div className="flex items-center gap-3">
+              <Button asChild variant="ghost" size="sm" className="text-[13px] text-muted-foreground hover:text-foreground">
+                <Link href="/login">Login</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="text-[13px] h-8">
+                <Link href="/signup">Sign Up</Link>
+              </Button>
+            </div>
+          )}
 
         </header>
 

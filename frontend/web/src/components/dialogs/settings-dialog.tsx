@@ -257,23 +257,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="flex items-center justify-between py-2 border-t border-border">
-                  <div className="space-y-0.5">
-                    <Label className="text-sm font-medium text-foreground">Accent color</Label>
-                    <p className="text-xs text-muted-foreground">Color profile for headers and buttons.</p>
-                  </div>
-                  <Select value={accent} onValueChange={handleAccentChange}>
-                    <SelectTrigger className="w-[140px] bg-muted border-border text-foreground hover:bg-accent cursor-pointer">
-                      <SelectValue placeholder="Accent Color" />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      <SelectItem value="default">Orange (Default)</SelectItem>
-                      <SelectItem value="blue">Blue</SelectItem>
-                      <SelectItem value="purple">Purple</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
             )}
 
@@ -293,10 +276,28 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
                 <div className="py-4 border-t border-border space-y-3">
                   <div className="space-y-0.5">
+                    <Label className="text-sm font-medium text-foreground">Cookie Consent Preferences</Label>
+                    <p className="text-xs text-muted-foreground mb-3">Manage analytical, functional, and customization cookies settings.</p>
+                  </div>
+                  <Button 
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        window.dispatchEvent(new Event("moots:manage-cookie-preferences"))
+                      }
+                    }} 
+                    variant="outline" 
+                    className="text-xs font-semibold h-9 border-border text-foreground hover:bg-accent cursor-pointer animate-none"
+                  >
+                    Adjust Cookie Preferences
+                  </Button>
+                </div>
+
+                <div className="py-4 border-t border-border space-y-3">
+                  <div className="space-y-0.5">
                     <Label className="text-sm font-medium text-foreground">Data Export & Portability</Label>
                     <p className="text-xs text-muted-foreground mb-3">Download a copy of your chat transcripts and account info.</p>
                   </div>
-                  <Button onClick={handleDataExport} variant="outline" className="text-xs font-semibold h-9 gap-2 border-border text-foreground hover:bg-accent">
+                  <Button onClick={handleDataExport} variant="outline" className="text-xs font-semibold h-9 gap-2 border-border text-foreground hover:bg-accent cursor-pointer">
                     <Download className="size-3.5" /> Request Data Export
                   </Button>
                 </div>
@@ -397,9 +398,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               <div className="space-y-4">
                 {[
                   { label: "Help Center", href: "/help" },
-                  { label: "Community Guidelines", href: "/safety" },
-                  { label: "Privacy Policy", href: "/privacy" },
-                  { label: "Terms of Service", href: "/terms" },
+                  { label: "Community Guidelines", href: "/policies/community-guidelines" },
+                  { label: "Privacy Policy", href: "/policies/privacy" },
+                  { label: "Terms of Service", href: "/policies/terms" },
                 ].map((linkItem) => (
                   <a
                     key={linkItem.label}

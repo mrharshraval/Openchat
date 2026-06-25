@@ -25,6 +25,8 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 
+import { LandingHeader } from "@/components/panels/landing-header"
+
 export const metadata: Metadata = {
   title: "Moots - Talk to Someone New Instantly | Anonymous Random Chat",
   description:
@@ -82,41 +84,11 @@ export default function LandingPage() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-md supports-backdrop-filter:bg-background/60">
-        <div className="container mx-auto flex h-14 items-center justify-between px-4 max-w-7xl">
-          <div className="flex items-center">
-            <img
-              src="/brand/logo-lockups/monochrome/Black%20Filled.svg"
-              alt="Moots"
-              className="h-7 w-auto dark:hidden"
-            />
-            <img
-              src="/brand/logo-lockups/monochrome/White%20Filled.svg"
-              alt="Moots"
-              className="h-7 w-auto hidden dark:block"
-            />
-          </div>
-
-          <nav className="flex items-center gap-4">
-            <Button asChild variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground">
-              <Link href="/login">Login</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm" className="text-xs h-8">
-              <Link href="/signup">Sign Up</Link>
-            </Button>
-            <Button asChild size="sm" className="text-xs h-8">
-              <Link href="/chat">Start Chat</Link>
-            </Button>
-          </nav>
-        </div>
-      </header>
+      <LandingHeader />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 lg:py-32 border-b border-border bg-radial-glow">
+      <section className="relative overflow-hidden py-20 lg:py-32 bg-background">
         <div className="container mx-auto px-4 text-center max-w-4xl relative z-10">
-          <Badge variant="secondary" className="mb-4 text-[10px] uppercase tracking-wider font-semibold bg-primary/10 text-primary hover:bg-primary/10 border-primary/20">
-            <Sparkles className="h-3 w-3 mr-1" /> No Signup Required
-          </Badge>
           <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl text-foreground mb-6 leading-tight">
             Talk to Someone New <span className="text-primary">Instantly</span>
           </h1>
@@ -126,156 +98,23 @@ export default function LandingPage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button asChild size="lg" className="w-full sm:w-auto h-12 text-sm font-semibold px-8 shadow-lg shadow-primary/20">
-              <Link href="/chat" className="flex items-center gap-2">
-                START CHAT NOW
-                <ArrowRight className="h-4 w-4" />
+              <Link href="/chat">
+                Start Chat
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="w-full sm:w-auto h-12 text-sm px-8">
-              <Link href="/signup">Create Account</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Trust Indicators */}
-      <section className="py-12 bg-muted/20 border-b border-border">
-        <div className="container mx-auto px-4 max-w-7xl">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { title: "Anonymous Chat", desc: "No names, emails, or credentials required.", icon: Shield },
-              { title: "No Signup Needed", desc: "Start conversations instantly with one click.", icon: Zap },
-              { title: "Real-Time Matching", desc: "Sub-second matchmaking connections.", icon: Globe },
-              { title: "Safety & Moderation", desc: "24/7 moderator audit and simple report triggers.", icon: Shield },
-            ].map((indicator, index) => {
-              const Icon = indicator.icon
-              return (
-                <div key={index} className="flex flex-col items-center lg:items-start text-center lg:text-left gap-2 p-2">
-                  <div className="h-9 w-9 flex items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="font-semibold text-xs text-foreground mt-2">{indicator.title}</h3>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">{indicator.desc}</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="py-20 border-b border-border">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <div className="text-center mb-16">
-            <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">How It Works</h2>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-2">Connecting with strangers is as simple as it gets.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
-            {[
-              { step: "01", title: "Start Chat", desc: "Click the CTA button on the landing page." },
-              { step: "02", title: "Get Matched", desc: "Our real-time engine pairs you with an active peer." },
-              { step: "03", title: "Talk", desc: "Share ideas anonymously inside a clean screen." },
-              { step: "04", title: "Next Stranger", desc: "Skip anytime to meet someone new instantly." },
-            ].map((step, index) => (
-              <div key={index} className="flex flex-col items-center text-center gap-2 relative">
-                <span className="text-4xl font-black text-primary/10 select-none">{step.step}</span>
-                <h3 className="font-bold text-xs text-foreground mt-1">{step.title}</h3>
-                <p className="text-[11px] text-muted-foreground leading-relaxed max-w-xs">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section className="py-20 bg-muted/10 border-b border-border">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <div className="text-center mb-16">
-            <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Platform Features</h2>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-2">Tools constructed to optimize matching and retention.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { title: "Random Chat", desc: "Meet random people around the world without filters.", icon: MessageSquare },
-              { title: "Interest Matching", desc: "Add tags to match with peers sharing common hobbies.", icon: Tag },
-              { title: "Language Matching", desc: "Target strangers speaking your preferred dialect.", icon: Globe },
-              { title: "Communities", desc: "Join public group chatrooms organized by interests.", icon: Users },
-              { title: "Friends List", desc: "Save contacts from matches and message them directly.", icon: Heart },
-              { title: "Saved History", desc: "Access archived transcripts of your past conversations.", icon: History },
-            ].map((feat, index) => {
-              const Icon = feat.icon
-              return (
-                <Card key={index} className="bg-card border-border hover:border-border/80 transition-colors">
-                  <CardHeader className="p-4 pb-2">
-                    <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 mb-2">
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <CardTitle className="text-xs font-bold text-foreground">{feat.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">{feat.desc}</p>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Community Preview */}
-      <section className="py-20 border-b border-border">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <div className="flex flex-col sm:flex-row items-center justify-between mb-12 gap-4">
-            <div className="text-center sm:text-left">
-              <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Trending Communities</h2>
-              <p className="text-xs text-muted-foreground mt-1">Jump into shared active chats right now.</p>
-            </div>
-            <Button asChild variant="outline" size="sm" className="text-xs">
-              <Link href="/communities">Explore All Communities</Link>
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {[
-              { title: "Gaming Lounge", slug: "gaming", count: 1240, desc: "Talk about your favorite PC/console games." },
-              { title: "React Developers", slug: "react", count: 820, desc: "Front-end engineering, questions, and coding tips." },
-              { title: "LoFi Chill Beats", slug: "lofi", count: 530, desc: "Relax and listen to beats together with friends." },
-            ].map((room) => (
-              <Card key={room.slug} className="bg-card border-border flex flex-col justify-between">
-                <CardHeader className="p-4 pb-2">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <Badge variant="secondary" className="text-[9px] px-1 bg-primary/10 text-primary hover:bg-primary/10 border-primary/20">
-                      {room.count} Active
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-xs font-bold text-foreground">{room.title}</CardTitle>
-                  <CardDescription className="text-[11px] text-muted-foreground mt-1 leading-normal">
-                    {room.desc}
-                  </CardDescription>
-                </CardHeader>
-                <CardFooter className="p-4 pt-2 border-t border-border/40">
-                  <Button asChild size="sm" className="w-full text-[10px] h-8">
-                    <Link href={`/c/${room.slug}/chat`}>Join Room</Link>
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
           </div>
         </div>
       </section>
 
       {/* FAQ Accordion */}
-      <section className="py-20 bg-muted/5 border-b border-border">
-        <div className="container mx-auto px-4 max-w-3xl">
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-6 max-w-3xl">
           <div className="text-center mb-12">
-            <HelpCircle className="h-8 w-8 text-primary mx-auto mb-2 opacity-80" />
-            <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Frequently Asked Questions</h2>
+            <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Frequently Asked Questions</h2>
             <p className="text-xs text-muted-foreground mt-2">Answers to common queries about matchmaking, privacy, and guidelines.</p>
           </div>
 
-          <Accordion type="single" collapsible className="w-full border-t border-border">
+          <Accordion type="single" collapsible className="w-full">
             {[
               {
                 q: "Is signup required to use Moots?",
@@ -294,11 +133,11 @@ export default function LandingPage() {
                 a: "Every active chat contains an immediate 'Report Stranger' control button. Flagged transcripts are immediately routed to our moderator dashboard for audit and ban actions.",
               },
             ].map((faq, index) => (
-              <AccordionItem key={index} value={`item-${index}`} className="border-b border-border">
-                <AccordionTrigger className="text-xs font-semibold text-foreground py-4 hover:no-underline">
+              <AccordionItem key={index} value={`item-${index}`} className="border-none">
+                <AccordionTrigger className="text-sm font-semibold text-foreground py-4 hover:no-underline">
                   {faq.q}
                 </AccordionTrigger>
-                <AccordionContent className="text-[11px] text-muted-foreground leading-relaxed pb-4">
+                <AccordionContent className="text-[13px] text-muted-foreground leading-relaxed pb-4">
                   {faq.a}
                 </AccordionContent>
               </AccordionItem>
@@ -308,33 +147,39 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 bg-card text-card-foreground border-t border-border">
-        <div className="container mx-auto px-4 max-w-7xl">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+      <footer className="py-12 bg-background text-muted-foreground">
+        <div className="container mx-auto px-6 max-w-7xl">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8 text-left">
             <div className="flex flex-col gap-2">
-              <span className="font-semibold text-xs text-foreground">Platform</span>
-              <Link href="/chat" className="text-[11px] text-muted-foreground hover:text-foreground">Random Chat</Link>
-              <Link href="/communities" className="text-[11px] text-muted-foreground hover:text-foreground">Communities</Link>
-              <Link href="/blog" className="text-[11px] text-muted-foreground hover:text-foreground">Blog</Link>
+              <span className="font-semibold text-[13px] text-foreground">Platform</span>
+              <Link href="/chat" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Random Chat</Link>
+              <Link href="/communities" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Communities</Link>
+              <Link href="/blog" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Blog</Link>
             </div>
             <div className="flex flex-col gap-2">
-              <span className="font-semibold text-xs text-foreground">Information</span>
-              <Link href="/about" className="text-[11px] text-muted-foreground hover:text-foreground">About Us</Link>
-              <Link href="/safety" className="text-[11px] text-muted-foreground hover:text-foreground">Safety Guidelines</Link>
-              <Link href="/help" className="text-[11px] text-muted-foreground hover:text-foreground">Help Center / FAQs</Link>
+              <span className="font-semibold text-[13px] text-foreground">Information</span>
+              <Link href="/about" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">About Us</Link>
+              <Link href="/policies/safety" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Safety Center</Link>
+              <Link href="/policies/community-guidelines" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Community Guidelines</Link>
+              <Link href="/help" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Help Center / FAQs</Link>
+            </div>
+            <div className="flex flex-col gap-2 col-span-2 md:col-span-1">
+              <span className="font-semibold text-[13px] text-foreground">Legal</span>
+              <Link href="/policies/terms" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Terms of Use</Link>
+              <Link href="/policies/privacy" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</Link>
+              <Link href="/policies/cookies" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Cookie Policy</Link>
+              <Link href="/policies/acceptable-use" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Acceptable Use</Link>
+              <Link href="/policies/content-moderation" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Content Moderation</Link>
+              <Link href="/policies/copyright" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Copyright Policy</Link>
+              <Link href="/policies/legal-requests" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Legal Requests</Link>
             </div>
             <div className="flex flex-col gap-2">
-              <span className="font-semibold text-xs text-foreground">Legal</span>
-              <Link href="/privacy" className="text-[11px] text-muted-foreground hover:text-foreground">Privacy Policy</Link>
-              <Link href="/terms" className="text-[11px] text-muted-foreground hover:text-foreground">Terms of Service</Link>
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="font-semibold text-xs text-foreground">Connect</span>
-              <Link href="/contact" className="text-[11px] text-muted-foreground hover:text-foreground">Contact Support</Link>
+              <span className="font-semibold text-[13px] text-foreground">Connect</span>
+              <Link href="/contact" className="text-[13px] text-muted-foreground hover:text-foreground transition-colors">Contact Support</Link>
             </div>
           </div>
 
-          <Separator className="bg-border/50 mb-8" />
+          <div className="h-px bg-transparent mb-8 w-full" />
 
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
@@ -350,7 +195,7 @@ export default function LandingPage() {
               />
               <span className="font-semibold text-xs tracking-tight text-foreground">Moots</span>
             </div>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-[12px] text-muted-foreground">
               © {new Date().getFullYear()} Moots. All rights reserved. Talk anonymously, safely, and instantly.
             </p>
           </div>

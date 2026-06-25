@@ -187,32 +187,4 @@
     height: 100%;
     background-color: var(--primary);
     animation: progress-slide 2s infinite ease-in-out;
-}
-
-/* ── Accent Color Variables ── */
-:root[data-accent="default"] {
-  --primary: #d95f02;
-  --primary-foreground: #ffffff;
-}
-.dark[data-accent="default"] {
-  --primary: #f97316;
-  --primary-foreground: #000000;
-}
-
-:root[data-accent="blue"] {
-  --primary: #0284c7;
-  --primary-foreground: #ffffff;
-}
-.dark[data-accent="blue"] {
-  --primary: #3b82f6;
-  --primary-foreground: #ffffff;
-}
-
-:root[data-accent="purple"] {
-  --primary: #7c3aed;
-  --primary-foreground: #ffffff;
-}
-.dark[data-accent="purple"] {
-  --primary: #a855f7;
-  --primary-foreground: #ffffff;
-}
+}
