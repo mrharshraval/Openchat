@@ -1,0 +1,96 @@
+import { logger } from "./logger"
+
+interface RequestOptions extends RequestInit {
+  actionName?: string
+  userId?: string
+  guestId?: string
+}
+
+export async function apiRequest(url: string, options: RequestOptions = {}): Promise<Response> {
+  const { actionName, userId, guestId, ...fetchOptions } = options
+  
+  // Generate or inherit Request ID
+  let requestId: string
+  const headersObj = new Headers(fetchOptions.headers || {})
+  const incomingRequestId = headersObj.get("X-Request-ID")
+  
+  if (incomingRequestId) {
+    requestId = incomingRequestId
+  } else if (typeof window !== "undefined" && window.crypto && window.crypto.randomUUID) {
+    requestId = window.crypto.randomUUID()
+  } else {
+    requestId = `req-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`
+  }
+  
+  // Setup Headers
+  const headers = new Headers(fetchOptions.headers || {})
+  headers.set("X-Request-ID", requestId)
+  fetchOptions.headers = headers
+
+  const method = fetchOptions.method || "GET"
+  const timestamp = new Date().toISOString()
+  const payload = {
+    requestId,
+    action: actionName || `${method} ${url}`,
+    userId,
+    guestId,
+    httpMethod: method,
+    endpointUrl: url,
+    timestamp
+  }
+
+  logger.info(`Sending request: ${method} ${url}`, payload)
+  const startTime = performance.now()
+
+  try {
+    const res = await fetch(url, fetchOptions)
+    const duration = Math.round(performance.now() - startTime)
+    const success = res.ok
+
+    const postPayload = {
+      ...payload,
+      duration,
+      status: res.status,
+      success
+    }
+
+    if (success) {
+      logger.info(`Response received: ${method} ${url} - Status ${res.status}`, postPayload)
+    } else {
+      let errorDetails = ""
+      try {
+        const clonedRes = res.clone()
+        errorDetails = await clonedRes.text()
+      } catch {
+        errorDetails = "Failed to parse error response body"
+      }
+      logger.error(`Request failed: ${method} ${url} - Status ${res.status}`, {
+        ...postPayload,
+        errorCode: `HTTP_${res.status}`,
+        errorMessage: errorDetails || res.statusText
+      })
+    }
+    return res
+  } catch (error: any) {
+    const duration = Math.round(performance.now() - startTime)
+    
+    let errorCode = "NETWORK_ERROR"
+    const errorMessage = error?.message || String(error)
+
+    if (errorMessage.includes("Failed to fetch") || errorMessage.includes("fetch failed")) {
+      errorCode = "CORS_OR_NETWORK_UNREACHABLE"
+    } else if (errorMessage.includes("timeout") || errorMessage.includes("Timeout")) {
+      errorCode = "TIMEOUT"
+    }
+
+    logger.error(`Network failure: ${method} ${url}`, {
+      ...payload,
+      duration,
+      status: "FAILED",
+      success: false,
+      errorCode,
+      errorMessage
+    })
+    throw error
+  }
+}

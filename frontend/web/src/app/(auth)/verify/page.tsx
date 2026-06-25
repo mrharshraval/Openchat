@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Mail, CheckCircle2 } from "lucide-react";
+import { apiRequest } from "@/lib/api-client";
 
 function VerifyContent() {
   const router = useRouter();
@@ -36,10 +37,11 @@ function VerifyContent() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/verify-otp", {
+      const res = await apiRequest("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp }),
+        actionName: "VerifyPage Verify OTP",
       });
 
       const data = await res.json();

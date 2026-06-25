@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Camera } from "lucide-react";
 import { toast } from "sonner";
+import { apiRequest } from "@/lib/api-client";
 
 interface ProfileDialogProps {
   open: boolean;
@@ -52,10 +53,12 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/user/settings", {
+      const res = await apiRequest("/api/user/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, username, bio, image }),
+        actionName: "ProfileDialog Save Profile",
+        userId: session?.user?.id,
       });
 
       const data = await res.json();

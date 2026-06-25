@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { User, Mail, Calendar, Quote, Shield } from "lucide-react";
+import { apiRequest } from "@/lib/api-client";
 
 export default function ProfilePage() {
   const { data: session, update } = useSession();
@@ -48,10 +49,12 @@ export default function ProfilePage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/user/settings", {
+      const res = await apiRequest("/api/user/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, username, bio, image }),
+        actionName: "ProfilePage Save Profile Settings",
+        userId: session?.user?.id,
       });
 
       const data = await res.json();

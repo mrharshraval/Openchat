@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { env } from "@/env"
+import { logger } from "@/lib/logger"
 
 const POPULAR_TOPICS = [
   { id: "gaming", label: "Gaming" },
@@ -65,11 +66,20 @@ export default function ChatConfiguratorPage() {
       }, 1000)
 
       const userId = getUserId()
-      const wsUrl = env.NEXT_PUBLIC_WS_URL
+      const requestId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `req-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`
+      const wsUrl = `${env.NEXT_PUBLIC_WS_URL}?requestId=${requestId}`
+
+      logger.info(`WebSocket: Connecting to Matchmaker (startMatching=true)`, {
+        requestId,
+        userId,
+        action: "matchmaking-connect"
+      })
+
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws
 
       ws.onopen = () => {
+        logger.info(`WebSocket: Connected to Matchmaker`, { requestId, userId })
         ws.send(
           JSON.stringify({
             type: "join-queue",
@@ -90,7 +100,10 @@ export default function ChatConfiguratorPage() {
           const data = JSON.parse(event.data)
           const { type, payload } = data
 
+          logger.info(`WebSocket Message: Received ${type}`, { requestId, userId, eventType: type })
+
           if (type === "match-found" && payload.sessionId) {
+            logger.info(`WebSocket: Match found! Session ID: ${payload.sessionId}`, { requestId, userId, sessionId: payload.sessionId })
             if (timerRef.current) clearInterval(timerRef.current)
             ws.close()
             
@@ -100,12 +113,12 @@ export default function ChatConfiguratorPage() {
             }, 1200)
           }
         } catch (e) {
-          console.error("Matchmaking WS error:", e)
+          logger.error("Matchmaking WS error parsing message:", { requestId, userId, errorMessage: (e as Error).message })
         }
       }
 
       ws.onerror = (e) => {
-        console.error("WS connection error:", e)
+        logger.error("WS connection error", { requestId, userId, errorCode: "WS_ERROR" })
       }
     }
   }, [])
@@ -172,11 +185,20 @@ export default function ChatConfiguratorPage() {
     }, 1000)
 
     const userId = getUserId()
-    const wsUrl = env.NEXT_PUBLIC_WS_URL
+    const requestId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `req-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`
+    const wsUrl = `${env.NEXT_PUBLIC_WS_URL}?requestId=${requestId}`
+
+    logger.info(`WebSocket: Connecting to Matchmaker (handleStartMatching)`, {
+      requestId,
+      userId,
+      action: "matchmaking-connect"
+    })
+
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws
 
     ws.onopen = () => {
+      logger.info(`WebSocket: Connected to Matchmaker (handleStartMatching)`, { requestId, userId })
       ws.send(
         JSON.stringify({
           type: "join-queue",
@@ -197,7 +219,10 @@ export default function ChatConfiguratorPage() {
         const data = JSON.parse(event.data)
         const { type, payload } = data
 
+        logger.info(`WebSocket Message: Received ${type}`, { requestId, userId, eventType: type })
+
         if (type === "match-found" && payload.sessionId) {
+          logger.info(`WebSocket: Match found! Session ID: ${payload.sessionId}`, { requestId, userId, sessionId: payload.sessionId })
           if (timerRef.current) clearInterval(timerRef.current)
           ws.close()
           
@@ -207,12 +232,12 @@ export default function ChatConfiguratorPage() {
           }, 1200)
         }
       } catch (e) {
-        console.error("Matchmaking WS error:", e)
+        logger.error("Matchmaking WS error parsing message:", { requestId, userId, errorMessage: (e as Error).message })
       }
     }
 
     ws.onerror = (e) => {
-      console.error("WS connection error:", e)
+      logger.error("WS connection error", { requestId, userId, errorCode: "WS_ERROR" })
     }
   }
 

@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
 import Credentials from "next-auth/providers/credentials";
 import { env } from "./env";
+import { apiRequest } from "@/lib/api-client";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -18,10 +19,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         try {
           const backendUrl = env.BACKEND_API_URL;
-          const res = await fetch(`${backendUrl}/api/auth/login`, {
+          const res = await apiRequest(`${backendUrl}/api/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ identifier, password }),
+            actionName: "NextAuth Authorize Credentials Login",
           });
 
           if (!res.ok) {

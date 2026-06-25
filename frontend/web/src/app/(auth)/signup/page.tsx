@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Mail, Lock } from "lucide-react";
+import { apiRequest } from "@/lib/api-client";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -26,10 +27,11 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/register", {
+      const res = await apiRequest("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        actionName: "SignupPage Register Account",
       });
 
       const data = await res.json();

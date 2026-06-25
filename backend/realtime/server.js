@@ -1,23 +1,51 @@
 import { WebSocketServer } from "ws";
+import { createServer } from "http";
+import { parse } from "url";
+import crypto from "crypto";
 import { PORT, ALLOWED_ORIGINS, STALE_CLEANUP_INTERVAL } from "./src/config.js";
 import { env } from "./src/env.js";
 import { registry } from "./src/registry.js";
 import { matchmakingService } from "./src/matchmaking.js";
 import { sessionService } from "./src/session.js";
 import { messagingService, structuredLog } from "./src/messaging.js";
+import { logger } from "./src/lib/logger.js";
 
-// Initialize the WebSocket Server
-const wss = new WebSocketServer({ port: PORT });
+// Initialize a unified HTTP Server to handle /health endpoint
+const server = createServer((req, res) => {
+  const parsedUrl = parse(req.url, true);
+  if (parsedUrl.pathname === "/health") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        status: "healthy",
+        service: "moots-realtime",
+        version: "1.0.0",
+        timestamp: new Date().toISOString(),
+        clientsCount: wss.clients.size,
+      })
+    );
+  } else {
+    res.writeHead(404);
+    res.end();
+  }
+});
 
-structuredLog("STARTING_SERVER", "SYSTEM", { details: `Listening on port ${PORT}` });
+// Initialize the WebSocket Server (without port, bound to unified HTTP server upgrades)
+const wss = new WebSocketServer({ noServer: true });
 
-wss.on("listening", () => {
-  structuredLog("SERVER_LISTENING", "SYSTEM", { details: `WebSocket server is listening on port ${PORT}` });
+server.on("upgrade", (req, socket, head) => {
+  wss.handleUpgrade(req, socket, head, (ws) => {
+    wss.emit("connection", ws, req);
+  });
 });
 
 wss.on("connection", (ws, req) => {
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   const origin = req.headers.origin;
+  
+  // Extract Request ID from handshake query parameters
+  const parsedUrl = parse(req.url, true);
+  const requestId = parsedUrl.query.requestId || `req-ws-${crypto.randomUUID()}`;
 
   // 1. Origin Verification (Security Standard to prevent Cross-Site WebSocket Hijacking - CSWSH)
   if (env.NODE_ENV === "production") {
@@ -30,8 +58,8 @@ wss.on("connection", (ws, req) => {
     }
   }
 
-  // 2. Register Connection
-  const conn = registry.register(ws);
+  // 2. Register Connection with Request ID
+  const conn = registry.register(ws, requestId);
 
   structuredLog("CONNECTION_OPENED", conn.connectionId, {
     details: `IP: ${clientIp} | Origin: ${origin || "None"}`,
@@ -159,3 +187,20 @@ const shutdown = (signal) => {
 
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+// Startup Validation Check
+async function validateStartup() {
+  logger.info("Running startup checks and diagnostics...");
+  logger.info("Configuration summary:", {
+    service: "moots-realtime",
+    version: "1.0.0",
+    environment: env.NODE_ENV,
+    port: PORT,
+  });
+}
+
+validateStartup().then(() => {
+  server.listen(PORT, () => {
+    logger.info(`WebSocket and Health HTTP Server listening on port ${PORT}`);
+  });
+});

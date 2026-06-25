@@ -7,11 +7,12 @@ export class ConnectionRegistry {
     this.socketToId = new Map(); // ws -> connectionId
   }
 
-  register(ws) {
+  register(ws, requestId = null) {
     const connectionId = crypto.randomUUID();
     const metadata = {
       connectionId,
       ws,
+      requestId,
       userId: null,
       sessionId: null,
       connectedAt: new Date(),

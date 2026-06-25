@@ -1,11 +1,14 @@
 import express from "express";
 import cors from "cors";
+import crypto from "crypto";
 import { env } from "./src/config/env.js";
 import { PrismaClient } from "@prisma/client";
 import { Resend } from "resend";
 import bcrypt from "bcryptjs";
 import pg from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { logger } from "./src/lib/logger.js";
+import { requestContext, getRequestId } from "./src/lib/context.js";
 
 const app = express();
 const PORT = env.PORT;
@@ -15,10 +18,77 @@ const EMAIL_FROM = env.EMAIL_FROM;
 // Setup Prisma client
 const pool = new pg.Pool({ connectionString: env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient({
+  adapter,
+  log: [
+    { emit: "event", level: "query" },
+    { emit: "event", level: "error" },
+  ]
+});
+
+// Prisma Query Instrumentation
+prisma.$on("query", (e) => {
+  const reqId = getRequestId();
+  if (e.duration > 100) {
+    logger.warn(`Slow Database Query: ${e.query}`, {
+      requestId: reqId,
+      duration: e.duration,
+      params: e.params
+    });
+  } else {
+    logger.debug(`Database Query: ${e.query}`, {
+      requestId: reqId,
+      duration: e.duration,
+      params: e.params
+    });
+  }
+});
+
+prisma.$on("error", (e) => {
+  const reqId = getRequestId();
+  logger.error(`Database Error: ${e.message}`, {
+    requestId: reqId,
+    errorMessage: e.message
+  });
+});
 
 app.use(cors());
 app.use(express.json());
+
+// Request Tracing and Logging Middleware
+app.use((req, res, next) => {
+  const requestId = req.headers["x-request-id"] || crypto.randomUUID();
+  req.requestId = requestId;
+  res.setHeader("X-Request-ID", requestId);
+
+  requestContext.run({ requestId }, () => {
+    const startTime = performance.now();
+    const clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "";
+
+    logger.info(`Request started: ${req.method} ${req.originalUrl}`, {
+      requestId,
+      httpMethod: req.method,
+      route: req.originalUrl,
+      clientIp,
+    });
+
+    res.on("finish", () => {
+      const duration = Math.round(performance.now() - startTime);
+      const level = res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info";
+      
+      logger.log(level, `Request finished: ${req.method} ${req.originalUrl} - Status ${res.statusCode}`, {
+        requestId,
+        httpMethod: req.method,
+        route: req.originalUrl,
+        clientIp,
+        status: res.statusCode,
+        duration,
+      });
+    });
+
+    next();
+  });
+});
 
 // Helper to get client IP
 const getClientIp = (req) => {
@@ -243,6 +313,77 @@ app.put("/api/user/settings", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Express REST API listening on port ${PORT}`);
+// 5. PUBLIC: Health check endpoint
+app.get("/health", async (req, res) => {
+  let dbStatus = "UP";
+  let errorMsg = null;
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+  } catch (err) {
+    dbStatus = "DOWN";
+    errorMsg = err.message;
+  }
+
+  const isHealthy = dbStatus === "UP";
+  
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? "healthy" : "unhealthy",
+    service: "moots-api",
+    version: "1.0.0",
+    timestamp: new Date().toISOString(),
+    services: {
+      api: "UP",
+      database: dbStatus
+    },
+    ...(errorMsg && { error: errorMsg })
+  });
+});
+
+// Centralized Error Handling Middleware
+app.use((err, req, res, next) => {
+  const requestId = req.requestId || getRequestId();
+  const statusCode = err.status || err.statusCode || 500;
+  
+  logger.error(`Unhandled Exception: ${err.message}`, {
+    requestId,
+    httpMethod: req.method,
+    route: req.originalUrl,
+    status: statusCode,
+    errorCode: err.code || "INTERNAL_SERVER_ERROR",
+    errorMessage: err.stack || err.message,
+  });
+
+  res.status(statusCode).json({
+    error: env.NODE_ENV === "production" ? "Internal Server Error" : err.message,
+    code: err.code || "INTERNAL_SERVER_ERROR",
+    requestId,
+  });
+});
+
+// Startup Validation Check
+async function validateStartup() {
+  logger.info("Running startup checks and diagnostics...");
+  logger.info("Configuration summary:", {
+    service: "moots-api",
+    version: "1.0.0",
+    environment: env.NODE_ENV,
+    port: env.PORT,
+  });
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    logger.info("Startup Check: Database connection successful.");
+  } catch (err) {
+    logger.error("Startup Check Failed: Database is unreachable.", {
+      errorMessage: err.message,
+    });
+    process.exit(1);
+  }
+}
+
+validateStartup().then(() => {
+  app.listen(PORT, () => {
+    logger.info(`Express REST API listening on port ${PORT}`);
+  });
 });

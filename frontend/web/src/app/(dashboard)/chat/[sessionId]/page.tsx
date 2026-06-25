@@ -4,6 +4,7 @@ import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
 import { getOrInitializeNickname } from "@/lib/nickname"
 import { useSession } from "next-auth/react"
+import { logger } from "@/lib/logger"
 import {
   RotateCcw,
   MoreHorizontal,
@@ -183,7 +184,16 @@ export default function ChatSessionPage() {
     }
     setUserId(uId)
 
-    const wsUrl = env.NEXT_PUBLIC_WS_URL
+    const requestId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `req-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`
+    const wsUrl = `${env.NEXT_PUBLIC_WS_URL}?requestId=${requestId}`
+
+    logger.info(`WebSocket: Connecting to Chat Server`, {
+      requestId,
+      userId: uId,
+      sessionId,
+      action: "chat-connect"
+    })
+
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws
 
@@ -199,6 +209,7 @@ export default function ChatSessionPage() {
     }
 
     ws.onopen = () => {
+      logger.info(`WebSocket: Connected to Chat Server`, { requestId, userId: uId, sessionId })
       ws.send(
         JSON.stringify({
           type: "join-chat",
@@ -217,6 +228,8 @@ export default function ChatSessionPage() {
       try {
         const data = JSON.parse(event.data)
         const { type, payload } = data
+
+        logger.info(`WebSocket Message: Received ${type}`, { requestId, userId: uId, sessionId, eventType: type })
 
         switch (type) {
           case "chat-history": {

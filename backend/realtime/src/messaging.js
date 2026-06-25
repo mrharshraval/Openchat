@@ -2,25 +2,25 @@ import { InboundMessageSchema } from "./types.js";
 import { registry } from "./registry.js";
 import { matchmakingService } from "./matchmaking.js";
 import { sessionService } from "./session.js";
+import { logger } from "./lib/logger.js";
 
 // Helper to construct log strings with structured metadata
-function structuredLog(event, connectionId, metadata = {}, level = "info") {
-  const ts = new Date().toISOString().replace("T", " ").substring(0, 19);
-  const reqId = metadata.requestId || "N/A";
-  const userId = metadata.userId || "N/A";
-  const sessionId = metadata.sessionId || "N/A";
-  const prefix = `[${ts}] [WS Server] [Req: ${reqId}] [Conn: ${connectionId}] [User: ${userId}] [Session: ${sessionId}] [Event: ${event}]`;
+export function structuredLog(event, connectionId, metadata = {}, level = "info") {
+  const conn = registry.get(connectionId);
+  const reqId = metadata.requestId || conn?.requestId || "N/A";
+  const userId = metadata.userId || conn?.userId || "N/A";
+  const sessionId = metadata.sessionId || conn?.sessionId || "N/A";
 
-  const details = metadata.details ? ` | Details: ${metadata.details}` : "";
-  const message = `${prefix}${details}`;
+  const logPayload = {
+    requestId: reqId !== "N/A" ? reqId : undefined,
+    connectionId,
+    userId: userId !== "N/A" ? userId : undefined,
+    sessionId: sessionId !== "N/A" ? sessionId : undefined,
+    action: event,
+    ...(metadata.details && { details: metadata.details })
+  };
 
-  if (level === "warn") {
-    console.warn(`⚠️  ${message}`);
-  } else if (level === "error") {
-    console.error(`❌  ${message}`);
-  } else {
-    console.log(`🟢  ${message}`);
-  }
+  logger.log(level, `WebSocket Event [${event}]${metadata.details ? `: ${metadata.details}` : ""}`, logPayload);
 }
 
 export class MessagingService {
@@ -341,4 +341,3 @@ export class MessagingService {
   }
 }
 export const messagingService = new MessagingService();
-export { structuredLog };
