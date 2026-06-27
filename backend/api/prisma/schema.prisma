@@ -18,8 +18,13 @@ model User {
   lastIp        String?
   userAgent     String?
   lastLoginAt   DateTime?
+  isGuest       Boolean   @default(false)
   accounts      Account[]
   sessions      Session[]
+  participants  Participant[]
+  messages            Message[]
+  friendshipsInitiated Friendship[] @relation("FriendshipUser1")
+  friendshipsReceived  Friendship[] @relation("FriendshipUser2")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -57,4 +62,60 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model Conversation {
+  id           String        @id @default(cuid())
+  isGroup      Boolean       @default(false)
+  name         String?
+  status       String        @default("ACTIVE")
+  participants Participant[]
+  messages     Message[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Participant {
+  id             String       @id @default(cuid())
+  userId         String
+  conversationId String
+  joinedAt       DateTime     @default(now())
+  
+  // User-specific conversation settings
+  isPinned       Boolean      @default(false)
+  isArchived     Boolean      @default(false)
+  isMuted        Boolean      @default(false)
+  unreadCount    Int          @default(0)
+  hasLeft        Boolean      @default(false)
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, conversationId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model Friendship {
+  id        String   @id @default(cuid())
+  user1Id   String
+  user2Id   String
+  status    String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user1     User     @relation("FriendshipUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2     User     @relation("FriendshipUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+
+  @@unique([user1Id, user2Id])
 }

@@ -11,6 +11,12 @@ import {
   LogOut,
   UserCircle,
   ChevronsUpDown,
+  Settings,
+  LifeBuoy,
+  Sparkles,
+  Palette,
+  LogIn,
+  UserPlus,
 } from "lucide-react"
 import {
   Sidebar,
@@ -107,25 +113,25 @@ export function SidebarNav() {
   return (
     <Sidebar collapsible="icon" className="border-r border-black/[0.06] dark:border-white/[0.06]" onClick={handleSidebarClick}>
 
-      <SidebarHeader className="flex-row items-center px-2.5 h-14 shrink-0 relative">
-        <div className="flex items-center justify-center size-9 shrink-0">
+      <SidebarHeader className="flex-row items-center px-2 h-14 shrink-0 relative">
+        <div className="flex items-center justify-center size-10 rounded-xl shrink-0">
           <img
             src="/brand/brand-marks/monochrome/Balck%20Filled.svg"
             alt="Moots"
-            className="size-7 shrink-0 dark:hidden"
+            className="size-8 shrink-0 dark:hidden"
           />
           <img
             src="/brand/brand-marks/monochrome/White%20Filled.svg"
             alt="Moots"
-            className="size-7 shrink-0 hidden dark:block"
+            className="size-8 shrink-0 hidden dark:block"
           />
         </div>
-        <SidebarTrigger className="absolute right-2.5 size-9 text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent group-data-[collapsible=icon]:hidden [&_svg]:size-5" />
+        <SidebarTrigger className="absolute right-2.5 size-10 rounded-xl text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent group-data-[collapsible=icon]:hidden [&_svg]:size-5" />
       </SidebarHeader>
 
       {/* ── NAV ITEMS ── */}
-      <SidebarContent className="gap-0 mt-1">
-        <SidebarGroup className="px-2.5 py-0">
+      <SidebarContent className="gap-0">
+        <SidebarGroup className="px-2 pt-1 pb-0">
           <SidebarGroupContent>
             <SidebarMenu className="gap-2">
               {NAV_ITEMS.map((item) => {
@@ -141,9 +147,9 @@ export function SidebarNav() {
                       size="default"
                       tooltip={item.label}
                       className={cn(
-                        "h-9 gap-3 text-sm font-normal rounded-lg",
-                        "pl-2 pr-3 w-full justify-start [&_svg]:size-5!",
-                        "group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-2! group-data-[collapsible=icon]:justify-center"
+                        "h-10 gap-3 text-sm font-normal rounded-xl",
+                        "pl-2.5 pr-3 w-full justify-start [&_svg]:size-5!",
+                        "group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center"
                       )}
                     >
                       <Link href={item.href} className="flex items-center gap-3 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center">
@@ -160,7 +166,7 @@ export function SidebarNav() {
       </SidebarContent>
 
       {/* ── FOOTER: user avatar ── */}
-      <SidebarFooter className="px-2.5 py-3">
+      <SidebarFooter className="px-2 py-3">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu onOpenChange={(open) => { if (!open) { setHelpOpen(false); } }}>
@@ -168,9 +174,9 @@ export function SidebarNav() {
                 <SidebarMenuButton
                   tooltip={displayName}
                   className={cn(
-                    "h-9 gap-3 text-sm font-normal rounded-lg group/user",
-                    "pl-[6px] pr-3 w-full justify-start data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground",
-                    "group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-[6px]! group-data-[collapsible=icon]:justify-center"
+                    "h-10 gap-3 text-sm font-normal rounded-xl group/user",
+                    "pl-2 pr-3 w-full justify-start data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground",
+                    "group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center"
                   )}
                 >
                   <Avatar className="size-6 shrink-0 rounded-full after:rounded-full">
@@ -191,7 +197,7 @@ export function SidebarNav() {
                 align={align}
                 sideOffset={10}
                 className={cn(
-                  "p-1 rounded-lg border border-border/50 bg-background shadow-xl duration-200 sm:duration-100",
+                  "p-1 rounded-xl border border-border/50 bg-background shadow-xl",
                   state === "collapsed" && !isMobile ? "w-56" : "w-(--radix-dropdown-menu-trigger-width)"
                 )}
               >
@@ -212,13 +218,19 @@ export function SidebarNav() {
                 {isGuest ? (
                   <>
                     <DropdownMenuGroup>
-                      <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                      <DropdownMenuItem asChild className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                         <Link href="/signup" className="w-full flex items-center">
+                          <div className="flex items-center justify-center size-8 shrink-0">
+                            <UserPlus className="size-4" />
+                          </div>
                           <span>Create Account</span>
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                      <DropdownMenuItem asChild className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                         <Link href="/login" className="w-full flex items-center">
+                          <div className="flex items-center justify-center size-8 shrink-0">
+                            <LogIn className="size-4" />
+                          </div>
                           <span>Sign In</span>
                         </Link>
                       </DropdownMenuItem>
@@ -226,7 +238,7 @@ export function SidebarNav() {
                     <DropdownMenuSeparator className="my-1 bg-border/50" />
                     <DropdownMenuSub open={helpOpen} onOpenChange={setHelpOpen}>
                       <DropdownMenuSubTrigger
-                        className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer"
+                        className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer [&>svg]:ml-auto"
                         onPointerMove={(e) => e.preventDefault()}
                         onPointerLeave={(e) => e.preventDefault()}
                         onPointerEnter={(e) => e.preventDefault()}
@@ -236,38 +248,41 @@ export function SidebarNav() {
                           setHelpOpen((prev) => !prev);
                         }}
                       >
+                        <div className="flex items-center justify-center size-8 shrink-0">
+                          <LifeBuoy className="size-4" />
+                        </div>
                         <span>Help</span>
                       </DropdownMenuSubTrigger>
                       <DropdownMenuPortal>
-                        <DropdownMenuSubContent className="w-48 p-1 rounded-lg border border-border/50 bg-background shadow-xl duration-200 sm:duration-100">
-                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                        <DropdownMenuSubContent className="w-48 p-1 rounded-xl border border-border/50 bg-background shadow-xl">
+                          <DropdownMenuItem asChild className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                             <Link href="/help" className="w-full flex items-center">
                               <span>Help Center</span>
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                          <DropdownMenuItem asChild className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                             <a href={`mailto:${SUPPORT_EMAIL}`} className="w-full flex items-center">
                               <span>Contact Support</span>
                             </a>
                           </DropdownMenuItem>
-                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                          <DropdownMenuItem asChild className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                             <Link href="/policies/community-guidelines" className="w-full flex items-center">
                               <span>Community Guidelines</span>
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="my-1 bg-border/50" />
-                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                          <DropdownMenuItem asChild className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                             <Link href="/policies/privacy" className="w-full flex items-center">
                               <span>Privacy Policy</span>
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                          <DropdownMenuItem asChild className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                             <Link href="/policies/terms" className="w-full flex items-center">
                               <span>Terms of Service</span>
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="my-1 bg-border/50" />
-                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                          <DropdownMenuItem asChild className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                             <a href={`mailto:${SUPPORT_EMAIL}?subject=Report%20a%20Problem`} className="w-full flex items-center">
                               <span>Report a Problem</span>
                             </a>
@@ -279,23 +294,30 @@ export function SidebarNav() {
                 ) : (
                   <>
                     <DropdownMenuGroup>
+
                       <DropdownMenuItem 
                         onClick={() => setProfileOpen(true)}
-                        className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer"
+                        className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer"
                       >
+                        <div className="flex items-center justify-center size-8 shrink-0">
+                          <UserCircle className="size-4" />
+                        </div>
                         <span>Profile</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => setSettingsOpen(true)}
-                        className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer"
+                        className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer"
                       >
+                        <div className="flex items-center justify-center size-8 shrink-0">
+                          <Settings className="size-4" />
+                        </div>
                         <span>Settings</span>
                       </DropdownMenuItem>
                     </DropdownMenuGroup>
                     <DropdownMenuSeparator className="my-1 bg-border/50" />
                     <DropdownMenuSub open={helpOpen} onOpenChange={setHelpOpen}>
                       <DropdownMenuSubTrigger
-                        className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer"
+                        className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer [&>svg]:ml-auto"
                         onPointerMove={(e) => e.preventDefault()}
                         onPointerLeave={(e) => e.preventDefault()}
                         onPointerEnter={(e) => e.preventDefault()}
@@ -305,38 +327,41 @@ export function SidebarNav() {
                           setHelpOpen((prev) => !prev);
                         }}
                       >
+                        <div className="flex items-center justify-center size-8 shrink-0">
+                          <LifeBuoy className="size-4" />
+                        </div>
                         <span>Help</span>
                       </DropdownMenuSubTrigger>
                       <DropdownMenuPortal>
-                        <DropdownMenuSubContent className="w-48 p-1 rounded-lg border border-border/50 bg-background shadow-xl duration-200 sm:duration-100">
-                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                        <DropdownMenuSubContent className="w-48 p-1 rounded-xl border border-border/50 bg-background shadow-xl">
+                          <DropdownMenuItem asChild className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                             <Link href="/help" className="w-full flex items-center">
                               <span>Help Center</span>
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                          <DropdownMenuItem asChild className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                             <a href={`mailto:${SUPPORT_EMAIL}`} className="w-full flex items-center">
                               <span>Contact Support</span>
                             </a>
                           </DropdownMenuItem>
-                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                          <DropdownMenuItem asChild className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                             <Link href="/policies/community-guidelines" className="w-full flex items-center">
                               <span>Community Guidelines</span>
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="my-1 bg-border/50" />
-                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                          <DropdownMenuItem asChild className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                             <Link href="/policies/privacy" className="w-full flex items-center">
                               <span>Privacy Policy</span>
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                          <DropdownMenuItem asChild className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                             <Link href="/policies/terms" className="w-full flex items-center">
                               <span>Terms of Service</span>
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="my-1 bg-border/50" />
-                          <DropdownMenuItem asChild className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer">
+                          <DropdownMenuItem asChild className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                             <a href={`mailto:${SUPPORT_EMAIL}?subject=Report%20a%20Problem`} className="w-full flex items-center">
                               <span>Report a Problem</span>
                             </a>
@@ -347,10 +372,12 @@ export function SidebarNav() {
                     <DropdownMenuSeparator className="my-1 bg-border/50" />
                     <DropdownMenuItem
                       onClick={() => signOut({ callbackUrl: "/login" })}
-                      className="h-9 rounded-lg text-sm px-3 gap-3 cursor-pointer text-destructive focus:text-destructive"
+                      className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer focus:text-destructive focus:bg-destructive/10"
                     >
-                      <LogOut className="mr-2 size-4" />
-                      <span>Sign Out</span>
+                      <div className="flex items-center justify-center size-8 shrink-0">
+                        <LogOut className="size-4" />
+                      </div>
+                      <span>Log out</span>
                     </DropdownMenuItem>
                   </>
                 )}

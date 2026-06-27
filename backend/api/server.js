@@ -313,7 +313,182 @@ app.put("/api/user/settings", async (req, res) => {
   }
 });
 
-// 5. PUBLIC: Health check endpoint
+// --- Conversations API ---
+
+// 5. SECURE: Get user conversations
+app.get("/api/conversations", async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: "User ID is required" });
+
+    const participants = await prisma.participant.findMany({
+      where: { userId, hasLeft: false },
+      include: {
+        conversation: {
+          include: {
+            participants: {
+              include: { user: { select: { id: true, name: true, username: true, image: true, email: true } } }
+            },
+            messages: {
+              orderBy: { createdAt: 'desc' },
+              take: 1
+            }
+          }
+        }
+      }
+    });
+
+    const conversations = participants.map(p => {
+      const conv = p.conversation;
+      return {
+        id: conv.id,
+        isGroup: conv.isGroup,
+        name: conv.name,
+        status: conv.status,
+        isPinned: p.isPinned,
+        isArchived: p.isArchived,
+        isMuted: p.isMuted,
+        unreadCount: p.unreadCount,
+        participants: conv.participants.map(cp => cp.user),
+        latestMessage: conv.messages[0] || null,
+        updatedAt: conv.updatedAt
+      };
+    });
+
+    conversations.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    return res.status(200).json({ conversations });
+  } catch (error) {
+    console.error("Fetch conversations error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// 6. SECURE: Update conversation settings
+app.put("/api/conversations/:id/settings", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, isPinned, isArchived, isMuted, unreadCount } = req.body;
+    
+    if (!userId) return res.status(400).json({ error: "User ID is required" });
+
+    const data = {};
+    if (isPinned !== undefined) data.isPinned = isPinned;
+    if (isArchived !== undefined) data.isArchived = isArchived;
+    if (isMuted !== undefined) data.isMuted = isMuted;
+    if (unreadCount !== undefined) data.unreadCount = unreadCount;
+
+    const participant = await prisma.participant.update({
+      where: {
+        userId_conversationId: { userId, conversationId: id }
+      },
+      data
+    });
+
+    return res.status(200).json({ participant });
+  } catch (error) {
+    console.error("Update conversation settings error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// 7. SECURE: Delete or Clear conversation
+app.delete("/api/conversations/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, clearOnly } = req.body;
+    
+    if (!userId) return res.status(400).json({ error: "User ID is required" });
+
+    const conversation = await prisma.conversation.findUnique({
+      where: { id },
+      include: { participants: { include: { user: true } } }
+    });
+    
+    if (!conversation) return res.status(404).json({ error: "Not found" });
+
+    if (clearOnly) {
+      await prisma.message.deleteMany({
+        where: { conversationId: id }
+      });
+      return res.status(200).json({ message: "Chat cleared" });
+    } else {
+      const isAnyGuest = conversation.participants.some(p => p.user.isGuest);
+      
+      const users = conversation.participants.map(p => p.userId);
+      const isFriends = await prisma.friendship.findFirst({
+         where: {
+           OR: [
+             { user1Id: users[0] || "", user2Id: users[1] || "", status: "ACCEPTED" },
+             { user1Id: users[1] || "", user2Id: users[0] || "", status: "ACCEPTED" }
+           ]
+         }
+      });
+
+      if (isAnyGuest) {
+        await prisma.conversation.delete({ where: { id } });
+        return res.status(200).json({ message: "Conversation deleted for guest" });
+      } else {
+        if (!isFriends) {
+           await prisma.message.deleteMany({ where: { conversationId: id } });
+        }
+        await prisma.conversation.update({
+           where: { id },
+           data: { status: "ENDED" }
+        });
+        return res.status(200).json({ message: "Conversation ended" });
+      }
+    }
+  } catch (error) {
+    console.error("Delete conversation error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// --- Friends API ---
+
+app.post("/api/friends/request", async (req, res) => {
+  try {
+    const { senderId, receiverId } = req.body;
+    if (!senderId || !receiverId) return res.status(400).json({ error: "Missing IDs" });
+
+    const existing = await prisma.friendship.findFirst({
+      where: {
+         OR: [
+            { user1Id: senderId, user2Id: receiverId },
+            { user1Id: receiverId, user2Id: senderId }
+         ]
+      }
+    });
+
+    if (existing) return res.status(200).json({ friendship: existing });
+
+    const friendship = await prisma.friendship.create({
+      data: { user1Id: senderId, user2Id: receiverId, status: "PENDING" }
+    });
+    return res.status(200).json({ friendship });
+  } catch (error) {
+    console.error("Friend request error:", error);
+    return res.status(500).json({ error: "Internal error" });
+  }
+});
+
+app.post("/api/friends/accept", async (req, res) => {
+  try {
+    const { friendshipId, userId } = req.body; // userId is the acceptor
+    if (!friendshipId) return res.status(400).json({ error: "Missing ID" });
+
+    const friendship = await prisma.friendship.update({
+      where: { id: friendshipId },
+      data: { status: "ACCEPTED" }
+    });
+    return res.status(200).json({ friendship });
+  } catch (error) {
+    console.error("Accept friend error:", error);
+    return res.status(500).json({ error: "Internal error" });
+  }
+});
+
+// 8. PUBLIC: Health check endpoint
 app.get("/health", async (req, res) => {
   let dbStatus = "UP";
   let errorMsg = null;

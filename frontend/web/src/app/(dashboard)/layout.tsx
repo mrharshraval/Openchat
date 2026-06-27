@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Info } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -10,6 +11,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { SidebarNav } from "@/components/panels/sidebar-nav"
+import { SecondaryNav } from "@/components/panels/secondary-nav"
 import { useIsMobile } from "@/hooks/use-mobile"
 
 import Link from "next/link"
@@ -74,6 +76,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const initials = displayName.substring(0, 2).toUpperCase()
 
+  // On mobile, if we are at the root of a module with a secondary nav, hide the main inset.
+  const isSecondaryNavActiveRoot = pathname === "/chat" || pathname === "/notifications"
+
   return (
     <SidebarProvider
       defaultOpen={true}
@@ -86,8 +91,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       className="h-screen overflow-hidden"
     >
       <SidebarNav />
+      <SecondaryNav />
 
-      <SidebarInset className="flex flex-col h-screen overflow-hidden bg-background">
+      <SidebarInset 
+        className={cn(
+          "flex flex-col h-screen overflow-hidden bg-background",
+          isSecondaryNavActiveRoot ? "hidden md:flex" : "flex"
+        )}
+      >
 
         {/* ── HEADER ── */}
         {/*
