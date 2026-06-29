@@ -17,8 +17,42 @@ export async function processCommands() {
     const redisService = resolve("redisService");
     const client = redisService.client;
 
+    // 0. provision_conversation
+    let cmd = await client.rpop("moots:command:provision_conversation");
+    while (cmd) {
+      const { actorId1, actorId2, policyId, metadata } = JSON.parse(cmd);
+      const conversationsService = resolve("conversationsService");
+      
+      const { randomUUID } = await import("crypto");
+      const conversationId = randomUUID();
+
+      try {
+        logger.info({ conversationId, actorId1, actorId2 }, "Provisioning conversation");
+        await conversationsService.createConversation(conversationId, policyId, actorId1, actorId2, metadata);
+        
+        const EventBus = (await import("../../shared/events/event-bus.js")).EventBus;
+        const prisma = (await import("../../database/index.js")).prisma;
+
+        await EventBus.publish(prisma, "conversation.provisioned", conversationId, "Conversation", {
+          conversationId,
+          actorId1,
+          actorId2,
+          policyId,
+          metadata
+        });
+        logger.info({ conversationId }, "Successfully provisioned conversation");
+
+      } catch (err: any) {
+        // Ignore unique constraint violation if conversation already exists (e.g. race condition/retries)
+        if (err.code !== 'P2002') {
+          logger.error({ err, conversationId, actorId1, actorId2 }, "provision_conversation error");
+        }
+      }
+      cmd = await client.rpop("moots:command:provision_conversation");
+    }
+
     // 1. send_message
-    let cmd = await client.rpop("moots:command:send_message");
+    cmd = await client.rpop("moots:command:send_message");
     while (cmd) {
       const data = JSON.parse(cmd);
       const messagesService = resolve("messagesService");

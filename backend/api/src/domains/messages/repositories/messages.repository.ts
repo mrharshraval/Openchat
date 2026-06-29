@@ -21,6 +21,16 @@ export class MessagesRepository {
         replyToId: data.replyToId,
         metadata: {},
       },
+      include: {
+        sender: {
+          include: {
+            persona: true,
+            actor: {
+              include: { user: { select: { id: true, name: true, image: true, username: true } } }
+            }
+          }
+        }
+      }
     });
   }
 

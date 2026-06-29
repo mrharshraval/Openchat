@@ -1,9 +1,11 @@
 import { logger } from "./logger"
+import { env } from "../env"
 
 interface RequestOptions extends RequestInit {
   actionName?: string
   userId?: string
   guestId?: string
+  _retry?: boolean
 }
 
 export async function apiRequest(url: string, options: RequestOptions = {}): Promise<Response> {
@@ -39,6 +41,9 @@ export async function apiRequest(url: string, options: RequestOptions = {}): Pro
     timestamp
   }
 
+  // Ensure credentials are included to send HttpOnly session cookie
+  fetchOptions.credentials = fetchOptions.credentials || "include"
+
   logger.info(`Sending request: ${method} ${url}`, payload)
   const startTime = performance.now()
 
@@ -57,6 +62,47 @@ export async function apiRequest(url: string, options: RequestOptions = {}): Pro
     if (success) {
       logger.info(`Response received: ${method} ${url} - Status ${res.status}`, postPayload)
     } else {
+      if (res.status === 401 && !fetchOptions._retry) {
+        // Attempt to refresh
+        try {
+          const refreshRes = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/auth/refresh`, {
+            method: "POST",
+            credentials: "include"
+          })
+
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json()
+            const newAccessToken = refreshData.data?.accessToken
+            
+            if (newAccessToken) {
+              // Update headers with new token
+              const retryHeaders = new Headers(fetchOptions.headers)
+              retryHeaders.set("Authorization", `Bearer ${newAccessToken}`)
+              
+              const retryOptions = {
+                ...fetchOptions,
+                headers: retryHeaders,
+                _retry: true
+              } as RequestOptions
+              
+              // Only update moots_guest_token if we are not a registered user,
+              // or just update it safely.
+              if (typeof localStorage !== "undefined") {
+                const currentGuestToken = localStorage.getItem("moots_guest_token")
+                if (currentGuestToken) {
+                  localStorage.setItem("moots_guest_token", newAccessToken)
+                }
+              }
+
+              // Retry original request
+              return fetch(url, retryOptions)
+            }
+          }
+        } catch (refreshErr) {
+          logger.error("Failed to refresh token", { error: String(refreshErr) })
+        }
+      }
+
       let errorDetails = ""
       try {
         const clonedRes = res.clone()

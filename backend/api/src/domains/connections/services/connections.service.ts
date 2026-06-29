@@ -2,6 +2,7 @@ import { ConnectionsRepository } from "../repositories/connections.repository.js
 import { ConnectionStatus } from "@prisma/client";
 import { prisma } from "../../../database/index.js";
 import { ForbiddenError, NotFoundError } from "../../../shared/errors/AppError.js";
+import { EventBus } from "../../../shared/events/event-bus.js";
 
 export class ConnectionsService {
   private repository: ConnectionsRepository;
@@ -21,20 +22,10 @@ export class ConnectionsService {
 
       const connection = await this.repository.createConnection(senderId, receiverId, tx);
 
-      await tx.domainEvent.create({
-        data: {
-          eventType: "connection.requested",
-          aggregateId: connection.id,
-          aggregateType: "Connection",
-          payload: {
-            connectionId: connection.id,
-            actor1Id: connection.actor1Id,
-            actor2Id: connection.actor2Id,
-            status: connection.status,
-            senderActorId: senderId,
-            receiverActorId: receiverId,
-          }
-        }
+      await EventBus.publish(tx, "connection.requested", connection.id, "Connection", {
+        connectionId: connection.id,
+        senderActorId: senderId,
+        receiverActorId: receiverId,
       });
 
       return connection;
@@ -51,18 +42,10 @@ export class ConnectionsService {
       const updatedConnection = await this.repository.updateConnectionStatus(connection.id, ConnectionStatus.ACCEPTED, tx);
       await this.repository.createConversationForConnection(updatedConnection.actor1Id, updatedConnection.actor2Id, tx);
 
-      await tx.domainEvent.create({
-        data: {
-          eventType: "connection.accepted",
-          aggregateId: updatedConnection.id,
-          aggregateType: "Connection",
-          payload: {
-            connectionId: updatedConnection.id,
-            actor1Id: updatedConnection.actor1Id,
-            actor2Id: updatedConnection.actor2Id,
-            status: updatedConnection.status,
-          }
-        }
+      await EventBus.publish(tx, "connection.accepted", updatedConnection.id, "Connection", {
+        connectionId: updatedConnection.id,
+        actorId1: updatedConnection.actor1Id,
+        actorId2: updatedConnection.actor2Id,
       });
 
       return updatedConnection;
@@ -83,18 +66,10 @@ export class ConnectionsService {
       const updatedConnection = await this.repository.updateConnectionStatus(connectionId, ConnectionStatus.ACCEPTED, tx);
       await this.repository.createConversationForConnection(updatedConnection.actor1Id, updatedConnection.actor2Id, tx);
 
-      await tx.domainEvent.create({
-        data: {
-          eventType: "connection.accepted",
-          aggregateId: updatedConnection.id,
-          aggregateType: "Connection",
-          payload: {
-            connectionId: updatedConnection.id,
-            actor1Id: updatedConnection.actor1Id,
-            actor2Id: updatedConnection.actor2Id,
-            status: updatedConnection.status,
-          }
-        }
+      await EventBus.publish(tx, "connection.accepted", updatedConnection.id, "Connection", {
+        connectionId: updatedConnection.id,
+        actorId1: updatedConnection.actor1Id,
+        actorId2: updatedConnection.actor2Id,
       });
 
       return updatedConnection;
@@ -112,17 +87,10 @@ export class ConnectionsService {
         where: { id: connection.id }
       });
 
-      await tx.domainEvent.create({
-        data: {
-          eventType: "connection.removed",
-          aggregateId: deletedConnection.id,
-          aggregateType: "Connection",
-          payload: {
-            connectionId: deletedConnection.id,
-            actor1Id: deletedConnection.actor1Id,
-            actor2Id: deletedConnection.actor2Id,
-          }
-        }
+      await EventBus.publish(tx, "connection.removed", deletedConnection.id, "Connection", {
+        connectionId: deletedConnection.id,
+        actorId1: deletedConnection.actor1Id,
+        actorId2: deletedConnection.actor2Id,
       });
 
       return deletedConnection;

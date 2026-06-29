@@ -1,8 +1,8 @@
-﻿import { Router } from "express";
+import { Router } from "express";
 import { ConnectionsController } from "../controllers/connections.controller.js";
 import { validateRequest } from "../../../shared/middlewares/validate.middleware.js";
 import { authenticate } from "../../../shared/middlewares/authenticate.middleware.js";
-import { RequestConnectionSchema, AcceptConnectionSchema } from "../dto/connections.dto.js";
+import { RequestConnectionSchema, AcceptConnectionSchema } from "@moots/contracts";
 
 export const connectionsRouter = Router();
 const controller = new ConnectionsController();

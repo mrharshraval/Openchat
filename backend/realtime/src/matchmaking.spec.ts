@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MatchmakingService } from './matchmaking.js';
+import { MatchmakingService } from './modules/matchmaking/matchmaking.js';
 import { redis } from './lib/redis.js';
 
 vi.mock('./lib/redis.js', () => ({

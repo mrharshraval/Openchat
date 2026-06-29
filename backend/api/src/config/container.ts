@@ -15,6 +15,7 @@ import { ConnectionsController } from "../domains/connections/controllers/connec
 import { ConversationsService } from "../domains/conversations/services/conversations.service.js";
 import { ConversationsController } from "../domains/conversations/controllers/conversations.controller.js";
 import { RedisService } from "../lib/redis.service.js";
+import { PolicyService } from "../domains/policy/services/policy-engine.service.js";
 
 // Setup DI Container
 export const container = createContainer({
@@ -35,6 +36,7 @@ export interface Cradle {
   conversationsService: ConversationsService;
   conversationsController: ConversationsController;
   redisService: RedisService;
+  policyService: PolicyService;
 }
 
 export function registerDependencies() {
@@ -51,6 +53,7 @@ export function registerDependencies() {
     conversationsService: asClass(ConversationsService).singleton(),
     conversationsController: asClass(ConversationsController).singleton(),
     redisService: asClass(RedisService).singleton(),
+    policyService: asClass(PolicyService).singleton(),
   });
 }
 

@@ -3,8 +3,9 @@ import { ConversationsService } from "../services/conversations.service.js";
 import { sendSuccess } from "../../../shared/utils/response.js";
 import { asyncHandler } from "../../../shared/utils/asyncHandler.js";
 import { GetUserConversationsInput, UpdateConversationSettingsInput, DeleteConversationInput } from "../dto/conversations.dto.js";
+import { RevealIdentityInternalSchema } from "@moots/contracts";
 import { z } from "zod";
-
+import { EventBus } from "../../../shared/events/event-bus.js";
 export class ConversationsController {
   private service: ConversationsService;
 
@@ -40,7 +41,7 @@ export class ConversationsController {
 
   revealIdentityInternal = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { actorId } = z.object({ actorId: z.string() }).parse(req.body);
+    const { actorId } = RevealIdentityInternalSchema.shape.body.parse(req.body);
     
     const { prisma } = await import("../../../database/index.js");
     
@@ -50,16 +51,9 @@ export class ConversationsController {
         data: { identityState: "REVEALED" }
       });
 
-      await tx.domainEvent.create({
-        data: {
-          eventType: "identity.reveal_confirmed",
-          aggregateId: id as string,
-          aggregateType: "Conversation",
-          payload: {
-            conversationId: id as string,
-            actorId,
-          }
-        }
+      await EventBus.publish(tx, "identity.reveal_confirmed", id as string, "Conversation", {
+        conversationId: id as string,
+        actorId,
       });
     });
     

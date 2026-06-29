@@ -230,10 +230,10 @@ export default function ChatConfiguratorPage() {
         const data = JSON.parse(event.data)
         const { type, payload } = data
 
-        logger.info(`WebSocket Message: Received ${type}`, { requestId, userId, eventType: type })
+        logger.info(`WebSocket Message: Received ${type}`, { requestId, eventType: type })
 
         if (type === "match-found" && payload.sessionId) {
-          logger.info(`WebSocket: Match found! Session ID: ${payload.sessionId}`, { requestId, userId, sessionId: payload.sessionId })
+          logger.info(`WebSocket: Match found! Session ID: ${payload.sessionId}`, { requestId, sessionId: payload.sessionId })
           if (timerRef.current) clearInterval(timerRef.current)
           ws.close()
           
@@ -243,12 +243,12 @@ export default function ChatConfiguratorPage() {
           }, 1200)
         }
       } catch (e) {
-        logger.error("Matchmaking WS error parsing message:", { requestId, userId, errorMessage: (e as Error).message })
+        logger.error("Matchmaking WS error parsing message:", { requestId, errorMessage: (e as Error).message })
       }
     }
 
     ws.onerror = (e) => {
-      logger.error("WS connection error", { requestId, userId, errorCode: "WS_ERROR" })
+      logger.error("WS connection error", { requestId, errorCode: "WS_ERROR" })
     }
   }
 

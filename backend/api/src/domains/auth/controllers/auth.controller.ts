@@ -1,4 +1,4 @@
-﻿import { Request, Response } from "express";
+import { Request, Response } from "express";
 import { AuthService } from "../services/auth.service.js";
 import { sendSuccess } from "../../../shared/utils/response.js";
 import { asyncHandler } from "../../../shared/utils/asyncHandler.js";
@@ -16,13 +16,28 @@ export class AuthController {
     const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "";
     return Array.isArray(ip) ? ip[0] : ip;
   }
+  private setSessionCookie(res: Response, token: string) {
+    res.cookie("moots_session", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      path: "/",
+    });
+  }
 
   guestLogin = asyncHandler(async (req: Request, res: Response) => {
     const ipAddress = this.getClientIp(req);
     const userAgent = req.headers["user-agent"] || "";
 
     const data = await this.service.guestLogin(ipAddress, userAgent);
-    return sendSuccess(res, data, { message: "Guest login successful" });
+    if (data.actorSessionToken) {
+      this.setSessionCookie(res, data.actorSessionToken);
+    }
+    
+    // Don't send actorSessionToken in body payload, only cookie
+    const { actorSessionToken, ...safeData } = data as any;
+    return sendSuccess(res, safeData, { message: "Guest login successful" });
   });
 
   register = asyncHandler(async (req: Request<{}, {}, RegisterInput>, res: Response) => {
@@ -61,33 +76,24 @@ export class AuthController {
 
     const data = await this.service.login({ identifier, password }, ipAddress, userAgent);
     
-    // Set HTTP-only cookie
-    res.cookie("refreshToken", data.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
+    if (data.actorSessionToken) {
+      this.setSessionCookie(res, data.actorSessionToken);
+    }
 
     return sendSuccess(res, { accessToken: data.accessToken, user: data.user });
   });
 
   refresh = asyncHandler(async (req: Request, res: Response) => {
-    // Get refresh token from cookie
-    const refreshToken = req.cookies?.refreshToken;
-    if (!refreshToken) {
-      throw new UnauthorizedError("No refresh token provided");
+    // Get session token from cookie
+    const sessionToken = req.cookies?.moots_session;
+    if (!sessionToken) {
+      throw new UnauthorizedError("No session token provided");
     }
 
-    const data = await this.service.refreshAccessToken(refreshToken);
+    const data = await this.service.refreshSessionToken(sessionToken);
 
     // Set new HTTP-only cookie
-    res.cookie("refreshToken", data.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
+    this.setSessionCookie(res, data.actorSessionToken);
 
     return sendSuccess(res, { accessToken: data.accessToken });
   });

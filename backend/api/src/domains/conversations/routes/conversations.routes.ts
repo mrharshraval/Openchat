@@ -1,8 +1,8 @@
-﻿import { Router } from "express";
+import { Router } from "express";
 import { ConversationsController } from "../controllers/conversations.controller.js";
 import { validateRequest } from "../../../shared/middlewares/validate.middleware.js";
 import { authenticate } from "../../../shared/middlewares/authenticate.middleware.js";
-import { GetUserConversationsSchema, UpdateConversationSettingsSchema, DeleteConversationSchema } from "../dto/conversations.dto.js";
+import { GetUserConversationsSchema, UpdateConversationSettingsSchema, DeleteConversationSchema } from "@moots/contracts";
 
 export const conversationsRouter = Router();
 const controller = new ConversationsController();

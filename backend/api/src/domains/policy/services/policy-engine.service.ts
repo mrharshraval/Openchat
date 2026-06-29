@@ -1,6 +1,6 @@
-import { Capability } from "../constants/capabilities.js";
-import { ConversationPolicy } from "../types/conversation-policy.types.js";
-import { POLICIES } from "../presets/default-policies.js";
+import { Capability } from "../dto/capabilities.js";
+import { ConversationPolicy } from "../dto/conversation-policy.types.js";
+import { POLICIES } from "./default-policies.js";
 import { prisma } from "../../../database/index.js";
 import { AppError } from "../../../shared/errors/AppError.js";
 
@@ -44,10 +44,27 @@ export class PolicyService {
       where:  { id: conversationId },
       select: { policyId: true },
     });
-    const policy = Object.values(POLICIES).find(p => p.id === conv.policyId);
+    const policy = Object.values(POLICIES).find((p: ConversationPolicy) => p.id === conv.policyId);
     if (!policy) {
       throw new Error(`Policy ${conv.policyId} not found`);
     }
     return policy;
+  }
+
+  async seedPolicies(): Promise<void> {
+    for (const policy of Object.values(POLICIES)) {
+      await prisma.policy.upsert({
+        where: { id: policy.id },
+        update: {
+          name: policy.name,
+          rules: JSON.stringify(policy),
+        },
+        create: {
+          id: policy.id,
+          name: policy.name,
+          rules: JSON.stringify(policy),
+        },
+      });
+    }
   }
 }

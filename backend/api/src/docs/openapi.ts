@@ -1,7 +1,7 @@
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
-import { RegisterSchema, LoginSchema } from '../domains/auth/dto/auth.dto.js';
+import { RegisterSchema, LoginSchema } from '@moots/contracts';
 
 extendZodWithOpenApi(z);
 

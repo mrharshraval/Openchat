@@ -1,6 +1,5 @@
-import { prisma } from "../../database/index.js";
-import { resolve } from "../../config/container.js";
 import { logger } from "../../shared/logger.js";
+import { OutboxService } from "../../shared/events/outbox.service.js";
 
 const POLL_INTERVAL_MS = 2_000;   // idle poll: 2s
 const MIN_BACKOFF_MS   = 2_000;   // first retry after error
@@ -10,43 +9,14 @@ let running    = false;
 let timeoutId: NodeJS.Timeout | null = null;
 let backoffMs  = 0; // 0 = no error, use normal poll interval
 
+const outboxService = new OutboxService();
+
 export async function processOutbox() {
   if (running) return;
   running = true;
 
   try {
-    const redisService = resolve("redisService");
-
-    // Find unpublished events
-    const events = await prisma.domainEvent.findMany({
-      where: { publishedAt: null },
-      orderBy: { occurredAt: "asc" },
-      take: 50,
-    });
-
-    if (events.length > 0) {
-      for (const event of events) {
-        const envelope = {
-          eventId: event.id,
-          eventType: event.eventType,
-          version: 1,
-          occurredAt: event.occurredAt.toISOString(),
-          correlationId: event.id,
-          payload: event.payload,
-        };
-
-        const channel = `moots:event:${event.eventType}`;
-        await redisService.client.publish(channel, JSON.stringify(envelope));
-
-        // Mark as published
-        await prisma.domainEvent.update({
-          where: { id: event.id },
-          data: { publishedAt: new Date() },
-        });
-      }
-      logger.debug(`Published ${events.length} domain events to Redis`);
-    }
-
+    await outboxService.processOutbox();
     // Success — reset backoff
     backoffMs = 0;
   } catch (err: any) {

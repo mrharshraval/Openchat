@@ -2,6 +2,30 @@ import { prisma } from "../../../database/index.js";
 import { Conversation, Participant, Message, Connection, ConnectionStatus, ConversationStatus, Prisma } from "@prisma/client";
 
 export class ConversationsRepository {
+  async createConversation(data: { id: string; policyId: string; type: any; status: any; participants: { actorId: string; persona?: { displayName: string; avatarSeed: string; } }[] }) {
+    return prisma.conversation.create({
+      data: {
+        id: data.id,
+        policyId: data.policyId,
+        type: data.type,
+        status: data.status,
+        participants: {
+          create: data.participants.map(p => ({
+            actorId: p.actorId,
+            ...(p.persona ? {
+              persona: {
+                create: {
+                  displayName: p.persona.displayName,
+                  avatarSeed: p.persona.avatarSeed,
+                }
+              }
+            } : {})
+          }))
+        }
+      }
+    });
+  }
+
   async findConversationSummaries(actorId: string, cursor?: string, limit: number = 25) {
     // Early return optimization
     const count = await prisma.participant.count({ where: { actorId, hasLeft: false } });
@@ -33,6 +57,14 @@ export class ConversationsRepository {
             isMuted: true,
             unreadCount: true,
             actorId: true,
+            identityState: true,
+            persona: {
+              select: {
+                displayName: true,
+                avatarSeed: true,
+                color: true
+              }
+            },
             actor: {
               select: {
                 type: true,

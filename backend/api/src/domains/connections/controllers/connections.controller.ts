@@ -3,6 +3,7 @@ import { ConnectionsService } from "../services/connections.service.js";
 import { asyncHandler } from "../../../shared/utils/asyncHandler.js";
 import { sendSuccess } from "../../../shared/utils/response.js";
 import { z } from "zod";
+import { CreateConnectionInternalSchema, ConnectionActionInternalSchema } from "@moots/contracts";
 
 export class ConnectionsController {
   private service: ConnectionsService;
@@ -28,21 +29,21 @@ export class ConnectionsController {
 
   // Internal API methods
   createConnectionInternal = asyncHandler(async (req: Request, res: Response) => {
-    const { actorId1, actorId2 } = z.object({ actorId1: z.string(), actorId2: z.string() }).parse(req.body);
+    const { actorId1, actorId2 } = CreateConnectionInternalSchema.shape.body.parse(req.body);
     const connection = await this.service.requestConnection({ senderId: actorId1, receiverId: actorId2 });
     return sendSuccess(res, connection);
   });
 
   acceptConnectionInternal = asyncHandler(async (req: Request, res: Response) => {
     const id = req.params.id as string;
-    const { actorId } = z.object({ actorId: z.string() }).parse(req.body);
+    const { actorId } = ConnectionActionInternalSchema.shape.body.parse(req.body);
     const connection = await this.service.acceptConnection(actorId, id);
     return sendSuccess(res, connection);
   });
 
   removeConnectionInternal = asyncHandler(async (req: Request, res: Response) => {
     const id = req.params.id as string;
-    const { actorId } = z.object({ actorId: z.string() }).parse(req.body);
+    const { actorId } = ConnectionActionInternalSchema.shape.body.parse(req.body);
     const connection = await this.service.removeConnection(actorId, id);
     return sendSuccess(res, connection);
   });

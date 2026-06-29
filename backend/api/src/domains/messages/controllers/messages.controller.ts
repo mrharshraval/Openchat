@@ -2,7 +2,13 @@ import { Request, Response } from "express";
 import { MessagesService } from "../services/messages.service.js";
 import { asyncHandler } from "../../../shared/utils/asyncHandler.js";
 import { sendSuccess } from "../../../shared/utils/response.js";
-import { z } from "zod";
+import {
+  CreateMessageInternalSchema,
+  EditMessageInternalSchema,
+  ReactionInternalSchema,
+  ReadInternalSchema,
+} from "@moots/contracts";
+import { EventBus } from "../../../shared/events/event-bus.js";
 
 export class MessagesController {
   private service: MessagesService;
@@ -12,24 +18,14 @@ export class MessagesController {
   }
 
   createInternal = asyncHandler(async (req: Request, res: Response) => {
-    // Basic validation
-    const schema = z.object({
-      conversationId: z.string(),
-      senderParticipantId: z.string(),
-      content: z.string(),
-      contentType: z.enum(['TEXT', 'IMAGE', 'VIDEO', 'AUDIO', 'FILE']).optional(),
-      clientMessageId: z.string().optional(),
-      replyToId: z.string().optional(),
-    });
-
-    const parsed = schema.parse(req.body);
+    const parsed = CreateMessageInternalSchema.shape.body.parse(req.body);
     const message = await this.service.sendMessage(parsed);
     return sendSuccess(res, message, { status: 201 });
   });
 
   editInternal = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { newContent } = z.object({ newContent: z.string() }).parse(req.body);
+    const { newContent } = EditMessageInternalSchema.shape.body.parse(req.body);
     
     const message = await this.service.editMessage(id as string, newContent);
     return sendSuccess(res, message);
@@ -37,14 +33,14 @@ export class MessagesController {
 
   reactionInternal = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { emoji, actorId } = z.object({ emoji: z.string(), actorId: z.string() }).parse(req.body);
+    const { emoji, actorId } = ReactionInternalSchema.shape.body.parse(req.body);
     
     const message = await this.service.toggleReaction(id as string, emoji, actorId);
     return sendSuccess(res, message);
   });
 
   readInternal = asyncHandler(async (req: Request, res: Response) => {
-    const { conversationId, actorId } = z.object({ conversationId: z.string(), actorId: z.string() }).parse(req.body);
+    const { conversationId, actorId } = ReadInternalSchema.shape.body.parse(req.body);
     
     const { prisma } = await import("../../../database/index.js");
     await prisma.$transaction(async (tx) => {
@@ -53,16 +49,9 @@ export class MessagesController {
         data: { unreadCount: 0 }
       });
 
-      await tx.domainEvent.create({
-        data: {
-          eventType: "participant.read",
-          aggregateId: conversationId,
-          aggregateType: "Conversation",
-          payload: {
-            conversationId,
-            actorId,
-          }
-        }
+      await EventBus.publish(tx, "participant.read", conversationId, "Conversation", {
+        conversationId,
+        actorId,
       });
     });
     

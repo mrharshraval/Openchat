@@ -110,7 +110,7 @@ function ChatPanel() {
   const USER_ID = "cm4y18w4x000008lc6p69g3yq"
 
   React.useEffect(() => {
-    fetchConversations(USER_ID)
+    fetchConversations()
   }, [fetchConversations])
 
   React.useEffect(() => {
@@ -119,7 +119,7 @@ function ChatPanel() {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && nextCursor) {
-          fetchConversations(USER_ID, nextCursor)
+          fetchConversations(nextCursor)
         }
       },
       { threshold: 1.0 }
@@ -241,25 +241,25 @@ function ChatPanel() {
                                 </button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl border border-border/50 bg-background shadow-xl">
-                                <DropdownMenuItem onClick={() => updateSettings(chat.id, USER_ID, { isArchived: !chat.isArchived })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
+                                <DropdownMenuItem onClick={() => updateSettings(chat.id, { isArchived: !chat.isArchived })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                                   <div className="flex items-center justify-center size-8 shrink-0">
                                     <Archive className="size-4" />
                                   </div>
                                   <span>{chat.isArchived ? "Unarchive" : "Archive"}</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => updateSettings(chat.id, USER_ID, { isMuted: !chat.isMuted })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
+                                <DropdownMenuItem onClick={() => updateSettings(chat.id, { isMuted: !chat.isMuted })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                                   <div className="flex items-center justify-center size-8 shrink-0">
                                     <VolumeX className="size-4" />
                                   </div>
                                   <span>{chat.isMuted ? "Unmute" : "Mute"}</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => updateSettings(chat.id, USER_ID, { isPinned: !chat.isPinned })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
+                                <DropdownMenuItem onClick={() => updateSettings(chat.id, { isPinned: !chat.isPinned })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                                   <div className="flex items-center justify-center size-8 shrink-0">
                                     <Pin className="size-4" />
                                   </div>
                                   <span>{chat.isPinned ? 'Unpin' : 'Pin'}</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => updateSettings(chat.id, USER_ID, { unreadCount: 0 })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
+                                <DropdownMenuItem onClick={() => updateSettings(chat.id, { unreadCount: 0 })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                                   <div className="flex items-center justify-center size-8 shrink-0">
                                     <Check className="size-4" />
                                   </div>
@@ -278,14 +278,14 @@ function ChatPanel() {
                                   </div>
                                   <span>Block</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => deleteChat(chat.id, USER_ID, true)} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
+                                <DropdownMenuItem onClick={() => deleteChat(chat.id, true)} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                                   <div className="flex items-center justify-center size-8 shrink-0">
                                     <Eraser className="size-4" />
                                   </div>
                                   <span>Clear Chat</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator className="my-1 bg-border/50" />
-                                <DropdownMenuItem onClick={() => deleteChat(chat.id, USER_ID, false)} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer focus:text-destructive focus:bg-destructive/10">
+                                <DropdownMenuItem onClick={() => deleteChat(chat.id, false)} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer focus:text-destructive focus:bg-destructive/10">
                                   <div className="flex items-center justify-center size-8 shrink-0">
                                     <Trash2 className="size-4" />
                                   </div>

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { AuthController } from "../controllers/auth.controller.js";
 import { validateRequest } from "../../../shared/middlewares/validate.middleware.js";
-import { RegisterSchema, VerifyOtpSchema, LoginSchema } from "../dto/auth.dto.js";
+import { RegisterSchema, VerifyOtpSchema, LoginSchema } from "@moots/contracts";
 import { resolve } from "../../../config/container.js";
 
 export const authRouter = Router();

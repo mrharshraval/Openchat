@@ -18,7 +18,13 @@ import { startGuestCleanupJob } from "./jobs/guest-cleanup.job.js";
 import { startOutboxWorker } from "./workers/outbox.worker.js";
 import { startCommandWorker } from "./workers/command.worker.js";
 
-validateStartup().then(() => {
+import { resolve } from "../config/container.js";
+
+validateStartup().then(async () => {
+  const policyService = resolve("policyService");
+  await policyService.seedPolicies();
+  logger.info("Policies seeded successfully.");
+
   startGuestCleanupJob();
   startOutboxWorker();
   startCommandWorker();

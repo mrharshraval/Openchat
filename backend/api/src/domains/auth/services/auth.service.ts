@@ -37,6 +37,7 @@ export class AuthService {
 
     return {
       accessToken,
+      actorSessionToken: guestSession.guestToken,
       guestSession: {
         id: guestSession.id,
         createdAt: guestSession.createdAt,
@@ -181,7 +182,7 @@ export class AuthService {
 
     return {
       accessToken,
-      refreshToken,
+      actorSessionToken: refreshToken,
       user: {
         id:        user.id,
         name:      user.name,
@@ -194,31 +195,48 @@ export class AuthService {
     };
   }
 
-  async refreshAccessToken(refreshToken: string) {
-    const hashedToken = crypto.createHash("sha256").update(refreshToken).digest("hex");
+  async refreshSessionToken(sessionToken: string) {
+    // 1. Check if it's a Guest Session (unhashed UUID or raw string, but guestTokens are stored as raw strings right now)
+    const guestSession = await prisma.guestSession.findUnique({
+      where: { guestToken: sessionToken },
+      include: { actors: true }
+    });
 
-    const session = await prisma.session.findUnique({
+    if (guestSession) {
+      if (new Date() > guestSession.expiresAt) {
+        await prisma.guestSession.delete({ where: { id: guestSession.id } });
+        throw new UnauthorizedError("Guest session expired");
+      }
+      
+      const actor = guestSession.actors[0];
+      const accessToken = jwtService.sign({ actorId: actor.id });
+      return { accessToken, actorSessionToken: sessionToken };
+    }
+
+    // 2. Check if it's a User Session
+    const hashedToken = crypto.createHash("sha256").update(sessionToken).digest("hex");
+    const userSession = await prisma.session.findUnique({
       where: { sessionToken: hashedToken },
       include: { user: true }
     });
 
-    if (!session || new Date() > session.expires) {
-      if (session) {
-        await prisma.session.delete({ where: { id: session.id } });
+    if (!userSession || new Date() > userSession.expires) {
+      if (userSession) {
+        await prisma.session.delete({ where: { id: userSession.id } });
       }
-      throw new UnauthorizedError("Invalid or expired refresh token");
+      throw new UnauthorizedError("Invalid or expired session token");
     }
 
-    const actor = await this.repository.getOrCreateActorForUser(session.userId);
+    const actor = await this.repository.getOrCreateActorForUser(userSession.userId);
     const accessToken = jwtService.sign({ actorId: actor.id });
 
-    // Rotate refresh token
-    const newRefreshToken = crypto.randomBytes(32).toString("hex");
-    const newHashedToken = crypto.createHash("sha256").update(newRefreshToken).digest("hex");
+    // Rotate user session token
+    const newSessionToken = crypto.randomBytes(32).toString("hex");
+    const newHashedToken = crypto.createHash("sha256").update(newSessionToken).digest("hex");
     const newExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     await prisma.session.update({
-      where: { id: session.id },
+      where: { id: userSession.id },
       data: {
         sessionToken: newHashedToken,
         expires: newExpires
@@ -227,7 +245,7 @@ export class AuthService {
 
     return {
       accessToken,
-      refreshToken: newRefreshToken,
+      actorSessionToken: newSessionToken,
     };
   }
 }

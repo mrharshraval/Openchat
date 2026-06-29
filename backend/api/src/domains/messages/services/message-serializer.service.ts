@@ -1,5 +1,5 @@
-﻿import { IdentityState } from "@prisma/client";
-import { Message, Persona, UserProfile, SerializedMessage } from "../types/message.types.js";
+import { IdentityState } from "@prisma/client";
+import { Message, Persona, UserProfile, SerializedMessage } from '../dto/message.types.js';
 
 export class MessageSerializer {
   serialize(

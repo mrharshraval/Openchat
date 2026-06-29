@@ -11,6 +11,28 @@ export class ConversationsService {
     this.repository = new ConversationsRepository();
   }
 
+  async createConversation(id: string, policyId: string, actorId1: string, actorId2: string, metadata?: any) {
+    const actor1Meta = metadata?.actor1 || {};
+    const actor2Meta = metadata?.actor2 || {};
+
+    return this.repository.createConversation({
+      id,
+      policyId,
+      type: "DIRECT",
+      status: "ACTIVE",
+      participants: [
+        { 
+          actorId: actorId1, 
+          persona: actor1Meta.nickname ? { displayName: actor1Meta.nickname, avatarSeed: actorId1 } : undefined 
+        }, 
+        { 
+          actorId: actorId2, 
+          persona: actor2Meta.nickname ? { displayName: actor2Meta.nickname, avatarSeed: actorId2 } : undefined 
+        }
+      ]
+    });
+  }
+
   async getUserConversations(actorId: string, cursor?: string, limit?: number) {
     const { items, nextCursor } = await this.repository.findConversationSummaries(actorId, cursor, limit);
 
@@ -25,7 +47,18 @@ export class ConversationsService {
         isArchived: currentUserParticipant?.isArchived || false,
         isMuted: currentUserParticipant?.isMuted || false,
         unreadCount: currentUserParticipant?.unreadCount || 0,
-        participants: conv.participants.map((p: any) => p.actor?.user || { id: p.actorId, type: p.actor?.type }),
+        participants: conv.participants.map((p: any) => {
+          if (p.identityState === 'ANONYMOUS' && p.persona) {
+            return {
+              id: p.actorId,
+              name: p.persona.displayName,
+              username: 'Anonymous',
+              image: `https://api.dicebear.com/7.x/bottts/svg?seed=${p.persona.avatarSeed}`,
+              isAnonymous: true
+            };
+          }
+          return p.actor?.user || { id: p.actorId, type: p.actor?.type };
+        }),
         lastMessagePreview: conv.lastMessagePreview,
         lastMessageId: conv.lastMessageId,
         lastActivityAt: conv.lastActivityAt,

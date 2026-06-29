@@ -1,11 +1,10 @@
-﻿import { z } from "zod";
-
-export const GetUserConversationsSchema = z.object({
-  query: z.object({
-    cursor: z.string().optional(),
-    limit:  z.string().regex(/^\d+$/).transform(Number).optional(),
-  }),
-});
+import { z } from "zod";
+import {
+  GetUserConversationsSchema,
+  UpdateConversationSettingsSchema,
+  DeleteConversationSchema,
+  RevealIdentityInternalSchema
+} from "@moots/contracts";
 
 export interface ConversationSummaryDTO {
   id: string;
@@ -29,27 +28,7 @@ export interface ConversationSummaryDTO {
   updatedAt: Date | string;
 }
 
-export const UpdateConversationSettingsSchema = z.object({
-  params: z.object({
-    id: z.string().min(1, "Conversation ID is required"),
-  }),
-  body: z.object({
-    isPinned:    z.boolean().optional(),
-    isArchived:  z.boolean().optional(),
-    isMuted:     z.boolean().optional(),
-    unreadCount: z.number().int().min(0).optional(),
-  }),
-});
-
-export const DeleteConversationSchema = z.object({
-  params: z.object({
-    id: z.string().min(1, "Conversation ID is required"),
-  }),
-  body: z.object({
-    clearOnly: z.boolean().optional(),
-  }),
-});
-
 export type GetUserConversationsInput = z.infer<typeof GetUserConversationsSchema>;
 export type UpdateConversationSettingsInput = z.infer<typeof UpdateConversationSettingsSchema>;
 export type DeleteConversationInput = z.infer<typeof DeleteConversationSchema>;
+export type RevealIdentityInternalInput = z.infer<typeof RevealIdentityInternalSchema>["body"];

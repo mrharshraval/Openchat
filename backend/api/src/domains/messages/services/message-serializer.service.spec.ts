@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { MessageSerializer } from './message-serializer.service.js';
 import { IdentityState } from '@prisma/client';
-import { Message, Persona, UserProfile } from '../types/message.types.js';
+import { Message, Persona, UserProfile } from "../dto/message.types.js";
 
 describe('MessageSerializer', () => {
   it('should serialize with persona if state is ANONYMOUS', () => {

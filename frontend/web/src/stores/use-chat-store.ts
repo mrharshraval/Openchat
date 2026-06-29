@@ -50,9 +50,9 @@ interface ChatState {
   setFilter: (filter: "all" | "archived" | "requests") => void
   setSearchQuery: (query: string) => void
   setSelectedChatId: (id: string | null) => void
-  fetchConversations: (userId: string, cursor?: string) => Promise<void>
-  updateConversationSettings: (id: string, userId: string, settings: Partial<Conversation>) => Promise<void>
-  deleteConversation: (id: string, userId: string, clearOnly?: boolean) => Promise<void>
+  fetchConversations: (cursor?: string) => Promise<void>
+  updateConversationSettings: (id: string, settings: Partial<Conversation>) => Promise<void>
+  deleteConversation: (id: string, clearOnly?: boolean) => Promise<void>
   sendConnectionRequest: (receiverId: string, senderId: string) => Promise<void>
   acceptConnectionRequest: (connectionId: string, userId: string) => Promise<void>
   
@@ -76,10 +76,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setSelectedChatId: (selectedChatId) => set({ selectedChatId }),
 
-  fetchConversations: async (userId: string, cursor?: string) => {
+  fetchConversations: async (cursor?: string) => {
     set({ isLoading: true, error: null })
     try {
-      let url = `${env.NEXT_PUBLIC_API_URL}/api/conversations?userId=${userId}&limit=25`
+      let url = `${env.NEXT_PUBLIC_API_URL}/api/conversations?limit=25`
       if (cursor) url += `&cursor=${cursor}`
       
       const res = await apiRequest(url)
@@ -97,7 +97,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  updateConversationSettings: async (id: string, userId: string, settings: Partial<Conversation>) => {
+  updateConversationSettings: async (id: string, settings: Partial<Conversation>) => {
     // Optimistic update
     const previousConversations = get().conversations
     set((state) => ({
@@ -110,7 +110,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const res = await apiRequest(`${env.NEXT_PUBLIC_API_URL}/api/conversations/${id}/settings`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, ...settings }),
+        body: JSON.stringify(settings),
       })
       if (!res.ok) throw new Error("Failed to update settings")
     } catch (error) {
@@ -120,7 +120,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  deleteConversation: async (id: string, userId: string, clearOnly = false) => {
+  deleteConversation: async (id: string, clearOnly = false) => {
     const previousConversations = get().conversations
     
     // Optimistic update
@@ -141,7 +141,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const res = await apiRequest(`${env.NEXT_PUBLIC_API_URL}/api/conversations/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, clearOnly }),
+        body: JSON.stringify({ clearOnly }),
       })
       if (!res.ok) throw new Error("Failed to delete conversation")
       

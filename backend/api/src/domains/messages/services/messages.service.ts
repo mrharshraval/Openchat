@@ -1,24 +1,47 @@
 import { MessagesRepository } from "../repositories/messages.repository.js";
 import { prisma } from "../../../database/index.js";
 import { NotFoundError } from "../../../shared/errors/AppError.js";
+import { EventBus } from "../../../shared/events/event-bus.js";
+import { MessageSerializer } from "./message-serializer.service.js";
 
 export class MessagesService {
   private repository: MessagesRepository;
+  private serializer: MessageSerializer;
 
   constructor() {
     this.repository = new MessagesRepository();
+    this.serializer = new MessageSerializer();
   }
 
   async sendMessage(data: {
     conversationId: string;
-    senderParticipantId: string;
+    senderParticipantId: string; // Actually receives actorId from Realtime
     content: string;
     contentType?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO' | 'FILE';
     clientMessageId?: string;
     replyToId?: string;
   }) {
     return prisma.$transaction(async (tx) => {
-      const message = await this.repository.create(data, tx);
+      const participant = await tx.participant.findUnique({
+        where: {
+          actorId_conversationId: {
+            actorId: data.senderParticipantId,
+            conversationId: data.conversationId,
+          }
+        },
+        select: { id: true }
+      });
+
+      if (!participant) {
+        throw new NotFoundError(`Participant not found for actor ${data.senderParticipantId} in conversation ${data.conversationId}`);
+      }
+
+      const createData = {
+        ...data,
+        senderParticipantId: participant.id // Use actual Participant ID
+      };
+
+      const message = await this.repository.create(createData, tx);
 
       const previewText = data.contentType === 'TEXT' || !data.contentType ? data.content : `[${data.contentType}]`;
       
@@ -31,22 +54,28 @@ export class MessagesService {
         }
       });
 
-      await tx.domainEvent.create({
-        data: {
-          eventType: "message.sent",
-          aggregateId: message.id,
-          aggregateType: "Message",
-          payload: {
-            id: message.id,
-            conversationId: message.conversationId,
-            senderParticipantId: message.senderParticipantId,
-            content: message.content,
-            contentType: message.contentType,
-            clientMessageId: message.clientMessageId,
-            replyToId: message.replyToId,
-            createdAt: message.createdAt,
-          }
-        }
+      const revealMap = new Map();
+      const personaMap = new Map();
+      const profileMap = new Map();
+
+      revealMap.set(message.senderParticipantId, (message as any).sender.identityState);
+      personaMap.set(message.senderParticipantId, (message as any).sender.persona || { displayName: "Stranger", avatarSeed: (message as any).sender.actorId });
+      profileMap.set(message.senderParticipantId, {
+        id: (message as any).sender.actorId,
+        type: (message as any).sender.actor.type,
+        user: (message as any).sender.actor.user,
+      });
+
+      const serializedMessage = this.serializer.serialize(message as any, revealMap, personaMap, profileMap);
+
+      await EventBus.publish(tx, "message.sent", message.id, "Message", {
+        id: serializedMessage.id,
+        senderActorId: (message as any).sender.actorId,
+        sender: serializedMessage.sender,
+        content: serializedMessage.content,
+        createdAt: serializedMessage.sentAt.toISOString(),
+        conversationId: message.conversationId,
+        replyToId: message.replyToId,
       });
 
       return message;
@@ -55,45 +84,32 @@ export class MessagesService {
 
   async getMessages(conversationId: string, limit?: number, cursor?: string) {
     const messages = await this.repository.findByCursor(conversationId, limit, cursor);
-    return messages.map((msg: any) => ({
-      ...msg,
-      sender: this.resolveIdentity(msg.sender)
-    }));
-  }
+    
+    const revealMap = new Map();
+    const personaMap = new Map();
+    const profileMap = new Map();
 
-  private resolveIdentity(participant: any) {
-    if (participant.identityState === "REVEALED" || participant.identityState === "VERIFIED") {
-      return {
-        id: participant.actorId,
-        type: participant.actor.type,
-        user: participant.actor.user,
-        identityState: participant.identityState,
-      };
+    for (const msg of messages) {
+      const sender: any = (msg as any).sender;
+      revealMap.set(msg.senderParticipantId, sender.identityState);
+      personaMap.set(msg.senderParticipantId, sender.persona || { displayName: "Stranger", avatarSeed: sender.actorId });
+      profileMap.set(msg.senderParticipantId, {
+        id: sender.actorId,
+        type: sender.actor.type,
+        user: sender.actor.user,
+      });
     }
 
-    const persona = participant.persona || { displayName: "Stranger", avatarSeed: participant.actorId };
-    return {
-      id: participant.actorId,
-      type: participant.actor.type,
-      persona,
-      identityState: participant.identityState,
-    };
+    return messages.map((msg: any) => this.serializer.serialize(msg, revealMap, personaMap, profileMap));
   }
 
   async deleteMessage(messageId: string) {
     return prisma.$transaction(async (tx) => {
       const message = await this.repository.softDelete(messageId, tx);
 
-      await tx.domainEvent.create({
-        data: {
-          eventType: "message.deleted",
-          aggregateId: messageId,
-          aggregateType: "Message",
-          payload: {
-            messageId,
-            conversationId: message.conversationId,
-          }
-        }
+      await EventBus.publish(tx, "message.deleted", messageId, "Message", {
+        messageId,
+        conversationId: message.conversationId,
       });
 
       return message;
@@ -104,18 +120,10 @@ export class MessagesService {
     return prisma.$transaction(async (tx) => {
       const message = await this.repository.edit(messageId, newContent, tx);
 
-      await tx.domainEvent.create({
-        data: {
-          eventType: "message.edited",
-          aggregateId: messageId,
-          aggregateType: "Message",
-          payload: {
-            messageId,
-            conversationId: message.conversationId,
-            content: newContent,
-            edited: true,
-          }
-        }
+      await EventBus.publish(tx, "message.edited", messageId, "Message", {
+        messageId,
+        conversationId: message.conversationId,
+        content: newContent,
       });
 
       return message;
@@ -152,17 +160,10 @@ export class MessagesService {
 
       const updatedMessage = await this.repository.updateMetadata(messageId, metadata, tx);
 
-      await tx.domainEvent.create({
-        data: {
-          eventType: "reaction.updated",
-          aggregateId: messageId,
-          aggregateType: "Message",
-          payload: {
-            messageId,
-            conversationId: message.conversationId,
-            reactions,
-          }
-        }
+      await EventBus.publish(tx, "reaction.updated", messageId, "Message", {
+        messageId,
+        conversationId: message.conversationId,
+        reactions,
       });
 
       return updatedMessage;
