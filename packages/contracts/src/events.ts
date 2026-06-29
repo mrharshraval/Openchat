@@ -19,7 +19,7 @@ export const ConversationProvisionedEventSchema = z.object({
   metadata: z.any().optional(),
 });
 
-export const MessageSentEventSchema = z.object({
+export const MessagePersistedEventSchema = z.object({
   id: z.string(),
   conversationId: z.string(),
   senderActorId: z.string(),
@@ -29,6 +29,7 @@ export const MessageSentEventSchema = z.object({
   }),
   content: z.string(),
   createdAt: z.string(),
+  clientMessageId: z.string().optional(),
   replyToId: z.string().nullable().optional(),
 });
 
@@ -79,7 +80,7 @@ export const IdentityRevealConfirmedEventSchema = z.object({
 
 export const DomainEventSchema = z.discriminatedUnion("eventType", [
   z.object({ eventType: z.literal("conversation.provisioned"), payload: ConversationProvisionedEventSchema }),
-  z.object({ eventType: z.literal("message.sent"), payload: MessageSentEventSchema }),
+  z.object({ eventType: z.literal("message.persisted"), payload: MessagePersistedEventSchema }),
   z.object({ eventType: z.literal("message.deleted"), payload: MessageDeletedEventSchema }),
   z.object({ eventType: z.literal("message.edited"), payload: MessageEditedEventSchema }),
   z.object({ eventType: z.literal("reaction.updated"), payload: ReactionUpdatedEventSchema }),
@@ -113,6 +114,7 @@ export type WSOutboundEventType =
   | "partner-joined"
   | "chat-history"
   | "message"
+  | "message-persisted"
   | "message-edited"
   | "reaction-update"
   | "partner-typing"

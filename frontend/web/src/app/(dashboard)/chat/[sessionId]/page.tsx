@@ -32,6 +32,8 @@ import { env } from "@/env"
 /* ── Types ── */
 interface Message {
   id: string
+  clientMessageId?: string
+  status?: "SENDING" | "DELIVERED" | "PERSISTED" | "FAILED"
   sender: "user" | "stranger"
   content: string
   time: string
@@ -121,6 +123,7 @@ export default function ChatSessionPage() {
   const [hasRevealedIdentity, setHasRevealedIdentity] = React.useState(false)
   const [partnerRevealedIdentity, setPartnerRevealedIdentity] = React.useState(false)
   const [connectionStatus, setConnectionStatus] = React.useState<"none" | "pending_sent" | "pending_received" | "accepted">("none")
+  const [isWsReady, setIsWsReady] = React.useState(false)
 
   const handleRevealIdentity = () => {
     if (!wsRef.current || !session?.user) return
@@ -235,9 +238,7 @@ export default function ChatSessionPage() {
       action: "chat-connect"
     })
 
-    // Inner async function — useEffect callbacks cannot themselves be async
     const connect = async () => {
-      // Fetch backend JWT — required by the realtime server for authentication
       const accessToken = await getWsAccessToken()
       const wsUrl = accessToken
         ? `${env.NEXT_PUBLIC_WS_URL}?token=${encodeURIComponent(accessToken)}&requestId=${requestId}`
@@ -258,6 +259,7 @@ export default function ChatSessionPage() {
       }
 
       ws.onopen = () => {
+        setIsWsReady(true)
         logger.info(`WebSocket: Connected to Chat Server`, { requestId, sessionId })
         ws.send(
           JSON.stringify({
@@ -272,17 +274,24 @@ export default function ChatSessionPage() {
         setTimeout(sendReadReceipt, 100)
       }
 
+      ws.onclose = () => {
+        setIsWsReady(false)
+        console.log("WebSocket Closed")
+      }
+
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
           const { type, payload } = data
 
-          logger.info(`WebSocket Message: Received ${type}`, { requestId, userId: uId, sessionId, eventType: type })
+          logger.info(`WebSocket Message: Received ${type}`, { requestId, userId: uId || undefined, sessionId, eventType: type })
 
           switch (type) {
             case "chat-history": {
               const history = payload.messages.map((m: any) => ({
                 id: m.id,
+                clientMessageId: m.clientMessageId,
+                status: "PERSISTED",
                 sender: m.senderId === uId ? "user" : "stranger",
                 content: m.content,
                 time: m.time,
@@ -304,6 +313,11 @@ export default function ChatSessionPage() {
               if (payload.partnerUsername) {
                 setPeerUsername(payload.partnerUsername)
               }
+              if (payload.selfId) {
+                setUserId(payload.selfId)
+                uId = payload.selfId 
+                sessionStorage.setItem("moots_userId", payload.selfId)
+              }
               sendReadReceipt()
               break
             }
@@ -311,6 +325,8 @@ export default function ChatSessionPage() {
             case "message": {
               const newMsg: Message = {
                 id: payload.id,
+                clientMessageId: payload.clientMessageId,
+                status: payload.status || "DELIVERED",
                 sender: payload.senderId === uId ? "user" : "stranger",
                 content: payload.content,
                 time: payload.time,
@@ -325,10 +341,35 @@ export default function ChatSessionPage() {
                     }
                   : undefined,
               }
-              setMessages((prev) => [...prev, newMsg])
+
+              setMessages((prev) => {
+                if (newMsg.clientMessageId) {
+                  const exists = prev.find((m) => m.clientMessageId === newMsg.clientMessageId)
+                  if (exists) {
+                    return prev.map((m) =>
+                      m.clientMessageId === newMsg.clientMessageId
+                        ? { ...m, ...newMsg, status: "DELIVERED" }
+                        : m
+                    )
+                  }
+                }
+                return [...prev, newMsg]
+              })
+
               if (newMsg.sender === "stranger") {
                 sendReadReceipt()
               }
+              break
+            }
+
+            case "message-persisted": {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.clientMessageId === payload.clientMessageId
+                    ? { ...msg, id: payload.id, status: "PERSISTED" }
+                    : msg
+                )
+              )
               break
             }
 
@@ -402,7 +443,6 @@ export default function ChatSessionPage() {
       window.addEventListener("focus", sendReadReceipt)
       document.addEventListener("visibilitychange", sendReadReceipt)
 
-      // Return cleanup so the outer effect can call it
       return () => {
         ws.close()
         window.removeEventListener("focus", sendReadReceipt)
@@ -410,7 +450,6 @@ export default function ChatSessionPage() {
       }
     }
 
-    // Fire the async connection; capture returned cleanup fn
     let cleanup: (() => void) | undefined
     connect().then((fn) => { cleanup = fn })
 
@@ -418,7 +457,6 @@ export default function ChatSessionPage() {
       cleanup?.()
       if (matchingTimerRef.current) clearInterval(matchingTimerRef.current)
       if (matchingWsRef.current) matchingWsRef.current.close()
-      // Fallback: also close via ref in case cleanup hasn't been set yet
       if (wsRef.current) wsRef.current.close()
     }
   }, [sessionId, router])
@@ -511,7 +549,7 @@ export default function ChatSessionPage() {
 
   const send = () => {
     const text = inputText.trim()
-    if (!text || !wsRef.current) return
+    if (!text || !wsRef.current || !isWsReady || wsRef.current.readyState !== WebSocket.OPEN) return
 
     if (editingMsg) {
       wsRef.current.send(
@@ -526,11 +564,31 @@ export default function ChatSessionPage() {
       )
       setEditingMsg(null)
     } else {
+      const clientMessageId = crypto.randomUUID()
+      const optimisticMsg: Message = {
+        id: clientMessageId,
+        clientMessageId,
+        status: "SENDING",
+        sender: "user",
+        content: text,
+        time: new Date().toISOString(),
+        replyTo: replyingTo
+          ? {
+              id: replyingTo.id,
+              sender: replyingTo.sender,
+              content: replyingTo.content,
+            }
+          : undefined,
+      }
+      
+      setMessages((prev) => [...prev, optimisticMsg])
+
       wsRef.current.send(
         JSON.stringify({
           type: "send-message",
           payload: {
             sessionId,
+            clientMessageId,
             content: text,
             replyTo: replyingTo
               ? {
@@ -692,7 +750,7 @@ export default function ChatSessionPage() {
                               <div className="flex items-center justify-between">
                                 <span className="text-muted-foreground">Status:</span>
                                 <span className="font-semibold">
-                                  {msg.seen ? "Seen" : "Sent"}
+                                  {msg.seen ? "Seen" : msg.status === "SENDING" ? "Sending..." : msg.status === "DELIVERED" ? "Delivered" : msg.status === "PERSISTED" ? "Sent" : msg.status === "FAILED" ? "Failed to send" : "Sent"}
                                   {msg.edited && " (Edited)"}
                                 </span>
                               </div>
@@ -791,9 +849,9 @@ export default function ChatSessionPage() {
                           <ChevronDown className={cn("size-4 transition-transform", expanded && "rotate-180")} strokeWidth={2} />
                         </button>
                       )}
-                      {msg.id === lastUserMsgId && msg.seen && (
+                      {(msg.id === lastUserMsgId || msg.status === "SENDING" || msg.status === "FAILED") && (
                         <span className="text-[10px] text-muted-foreground/70 mt-1 select-none pr-1">
-                          Seen just now
+                          {msg.seen ? "Seen just now" : msg.status === "SENDING" ? "Sending..." : msg.status === "DELIVERED" ? "Delivered" : msg.status === "PERSISTED" ? "Sent" : msg.status === "FAILED" ? "Failed to send" : "Sent"}
                         </span>
                       )}
                     </div>
@@ -1144,7 +1202,8 @@ export default function ChatSessionPage() {
                   ) : (
                     <button
                       onClick={send}
-                      className="size-8 rounded-full flex items-center justify-center bg-foreground text-background hover:opacity-90 transition-opacity cursor-pointer border-none outline-none"
+                      disabled={!isWsReady}
+                      className={cn("size-8 rounded-full flex items-center justify-center transition-opacity cursor-pointer border-none outline-none", isWsReady ? "bg-foreground text-background hover:opacity-90" : "bg-muted-foreground/30 text-muted-foreground cursor-not-allowed")}
                     >
                       <ChevronRight className="size-5 -rotate-90" strokeWidth={2.5} />
                     </button>

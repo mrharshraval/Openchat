@@ -103,6 +103,7 @@ export async function handleParsedMessage(
               partnerJoined: partnerId ? session.activeConnections.has(partnerId) : false,
               partnerNickname: partnerNickname || "Stranger",
               partnerUsername: partnerUsername || null,
+              selfId: actorId,
             },
           })
         );
@@ -119,12 +120,37 @@ export async function handleParsedMessage(
     }
 
     case "send-message": {
-      const { sessionId, content, replyTo } = payload;
+      const { sessionId, content, replyTo, clientMessageId } = payload;
+      const finalClientMessageId = clientMessageId || (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 11));
+
+      const session = sessionService.getSession(sessionId);
+      
+      const wsMsg = {
+        id: finalClientMessageId, // temporary ID until persisted
+        clientMessageId: finalClientMessageId,
+        senderId: actorId, // Need this for frontend parsing
+        sender: { id: actorId }, // Fallback for backend usage
+        content,
+        time: new Date().toISOString(),
+        reactions: {} as Record<string, string[]>,
+        seen: false,
+        replyTo: replyTo?.id ? { id: replyTo.id, senderId: replyTo.senderId, content: replyTo.content } : undefined,
+        status: "DELIVERED"
+      };
+
+      if (session) {
+        session.messages.push({ ...wsMsg, _actorId: actorId });
+        sessionService.broadcast(sessionId, {
+          type: "message",
+          payload: wsMsg,
+        }, registry, [actorId]);
+      }
+
       redis.lpush("moots:command:send_message", JSON.stringify({
         conversationId: sessionId,
         senderParticipantId: actorId,
         content,
-        clientMessageId: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 11),
+        clientMessageId: finalClientMessageId,
         replyToId: replyTo?.id,
       })).catch((err: any) => {
         structuredLog("REDIS_COMMAND_QUEUE_ERROR", connectionId, { details: err.message }, "error", conn);

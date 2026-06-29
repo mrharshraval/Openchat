@@ -1,4 +1,4 @@
-﻿import { z } from "zod";
+import { z } from "zod";
 
 // schemas for incoming payloads
 
@@ -22,6 +22,7 @@ export const JoinChatPayloadSchema = z.object({
 export const SendMessagePayloadSchema = z.object({
   sessionId: z.string().min(1),
   content: z.string().min(1),
+  clientMessageId: z.string().optional(),
   replyTo: z.object({
     id: z.string(),
     senderId: z.string(),

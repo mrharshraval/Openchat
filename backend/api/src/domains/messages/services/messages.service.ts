@@ -68,8 +68,9 @@ export class MessagesService {
 
       const serializedMessage = this.serializer.serialize(message as any, revealMap, personaMap, profileMap);
 
-      await EventBus.publish(tx, "message.sent", message.id, "Message", {
+      await EventBus.publish(tx, "message.persisted", message.id, "Message", {
         id: serializedMessage.id,
+        clientMessageId: message.clientMessageId,
         senderActorId: (message as any).sender.actorId,
         sender: serializedMessage.sender,
         content: serializedMessage.content,
