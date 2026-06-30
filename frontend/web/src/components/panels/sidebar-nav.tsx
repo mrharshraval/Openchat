@@ -47,7 +47,7 @@ import {
   DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu"
 import { useSession, signOut } from "next-auth/react"
-import { getOrInitializeNickname } from "@/lib/nickname"
+import { GuestService } from "@/features/core/services/guest-service"
 import { SettingsDialog } from "@/components/dialogs/settings-dialog"
 import { ProfileDialog } from "@/components/dialogs/profile-dialog"
 
@@ -98,7 +98,7 @@ export function SidebarNav() {
   const user = session?.user;
   const isGuest = !user;
   const displayName = isGuest 
-    ? (mounted ? getOrInitializeNickname() : "Guest User") 
+    ? (mounted ? GuestService.getGuestNickname() : "Guest User") 
     : (user.name || (user as any).username || user.email?.split("@")[0] || "User");
   const username = (user as any)?.username;
   const userSubtitle = isGuest 

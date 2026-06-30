@@ -1,9 +1,11 @@
 import type { NextConfig } from "next"
 
+import path from "path"
+
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["192.168.1.3"],
   turbopack: {
-    root: process.cwd(),
+    root: path.join(process.cwd(), "../../"),
   },
   serverExternalPackages: ["better-sqlite3"],
 }

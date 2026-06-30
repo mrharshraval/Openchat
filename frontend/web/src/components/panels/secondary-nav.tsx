@@ -4,7 +4,9 @@ import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Search, Pin, MessageSquare, Archive, Bell, Check, Trash2, UserPlus, Flame, AlertCircle, MoreHorizontal, VolumeX, Star, Ban, Eraser, Loader2 } from "lucide-react"
 import { Sidebar, SidebarContent, SidebarHeader, SidebarTrigger } from "@/components/ui/sidebar"
-import { useChatStore, Conversation } from "@/stores/use-chat-store"
+import { useChatStore, Conversation } from "@/stores/chat-store"
+import { ChatService } from "@/services/chat-service"
+import { useSecondaryNav } from "@/features/core/hooks/use-secondary-nav"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -18,50 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-// ── Notifications Mock Data ──
-interface Notification {
-  id: string
-  title: string
-  description: string
-  time: string
-  read: boolean
-  type: "system" | "match" | "friend"
-}
-
-const initialNotifications: Notification[] = [
-  {
-    id: "1",
-    title: "New Match Available!",
-    description: "Someone with shared interests in Gaming and Tech wants to chat.",
-    time: "2 mins ago",
-    read: false,
-    type: "match",
-  },
-  {
-    id: "2",
-    title: "Friend Request Received",
-    description: "Alex (gaming enthusiast) sent you a friend request.",
-    time: "1 hour ago",
-    read: false,
-    type: "friend",
-  },
-  {
-    id: "3",
-    title: "System Maintenance",
-    description: "Scheduled database upgrades on June 20th, 02:00 UTC.",
-    time: "1 day ago",
-    read: true,
-    type: "system",
-  },
-  {
-    id: "4",
-    title: "Match Streak!",
-    description: "You've made 5 successful chat matches today. Keep it up!",
-    time: "2 days ago",
-    read: true,
-    type: "match",
-  },
-]
+import { useNotificationStore } from "@/stores/notification-store"
 
 export function SecondaryNav() {
   const pathname = usePathname()
@@ -92,69 +51,22 @@ export function SecondaryNav() {
 }
 
 function ChatPanel() {
-  const filter = useChatStore((state) => state.filter)
-  const setFilter = useChatStore((state) => state.setFilter)
-  const searchQuery = useChatStore((state) => state.searchQuery)
-  const setSearchQuery = useChatStore((state) => state.setSearchQuery)
-  const conversations = useChatStore((state) => state.conversations)
-  const fetchConversations = useChatStore((state) => state.fetchConversations)
-  const updateSettings = useChatStore((state) => state.updateConversationSettings)
-  const deleteChat = useChatStore((state) => state.deleteConversation)
-  const isLoading = useChatStore((state) => state.isLoading)
-  const hasMore = useChatStore((state) => state.hasMore)
-  const nextCursor = useChatStore((state) => state.nextCursor)
-  const observerRef = React.useRef<IntersectionObserver | null>(null)
-  const loadMoreRef = React.useRef<HTMLDivElement>(null)
-
+  const router = useRouter()
+  const pathname = usePathname()
+  
   // Hardcode userId for testing, normally this comes from auth session
   const USER_ID = "cm4y18w4x000008lc6p69g3yq"
 
-  React.useEffect(() => {
-    fetchConversations()
-  }, [fetchConversations])
-
-  React.useEffect(() => {
-    if (isLoading || !hasMore) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && nextCursor) {
-          fetchConversations(nextCursor)
-        }
-      },
-      { threshold: 1.0 }
-    )
-
-    if (loadMoreRef.current) observer.observe(loadMoreRef.current)
-    observerRef.current = observer
-
-    return () => {
-      if (observerRef.current) observerRef.current.disconnect()
-    }
-  }, [isLoading, hasMore, nextCursor, fetchConversations])
-
-  const filteredConversations = React.useMemo(() => {
-    let filtered = conversations || []
-    
-    if (filter === "archived") {
-      filtered = filtered.filter(c => c.isArchived)
-    } else if (filter === "requests") {
-      filtered = [] // Mock for now
-    } else {
-      filtered = filtered.filter(c => !c.isArchived)
-    }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      filtered = filtered.filter(c => 
-        c.name?.toLowerCase().includes(q) || 
-        c.participants.some(p => p.name?.toLowerCase().includes(q) || p.username?.toLowerCase().includes(q)) ||
-        c.lastMessagePreview?.toLowerCase().includes(q)
-      )
-    }
-
-    return filtered
-  }, [conversations, filter, searchQuery])
+  const {
+    filter,
+    setFilter,
+    searchQuery,
+    setSearchQuery,
+    isLoading,
+    filteredConversations,
+    loadMoreRef,
+    hasMore
+  } = useSecondaryNav(USER_ID)
 
   return (
     <>
@@ -202,7 +114,7 @@ function ChatPanel() {
 
         {/* List Content */}
         <div className="flex-1">
-          {isLoading ? (
+          {isLoading && filteredConversations.length === 0 ? (
             <div className="flex justify-center items-center h-32">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
@@ -212,7 +124,8 @@ function ChatPanel() {
               <p className="text-xs text-muted-foreground">No conversations found.</p>
             </div>
           ) : (
-            filteredConversations.map(chat => {
+            <>
+            {filteredConversations.map(chat => {
               // Extract details for display
               const displayName = chat.type === "GROUP" ? chat.name : (chat.participants.find(p => p.id !== USER_ID)?.name || "Unknown")
               const initials = displayName?.substring(0, 2).toUpperCase() || "??"
@@ -223,14 +136,22 @@ function ChatPanel() {
 
               return (
               <div key={chat.id} className="relative group/chat">
-                <Button variant="ghost" className="w-full justify-start h-14 rounded-xl px-2 text-sm font-normal">
-                  <div className="flex items-center gap-4 w-full overflow-hidden">
+                <Button 
+                  asChild
+                  variant="ghost" 
+                  className={cn(
+                    "w-full justify-start h-14 rounded-xl px-2 text-sm font-normal cursor-pointer",
+                    pathname === `/chat/${chat.id}` && "bg-muted hover:bg-muted"
+                  )}
+                >
+                  <div onClick={() => router.push(`/chat/${chat.id}`)} role="button" tabIndex={0}>
+                    <div className="flex items-center gap-4 w-full overflow-hidden">
                     <div className={cn("h-10 w-10 rounded-full flex items-center justify-center shrink-0 bg-primary/10")}>
                       <span className={cn("text-xs font-medium text-primary")}>{initials}</span>
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                       <div className="flex justify-between w-full items-center mb-0.5">
-                        <span className="font-medium truncate pr-2">{displayName}</span>
+                        <span className="font-semibold truncate pr-2">{displayName}</span>
                         <div className="relative flex items-center shrink-0">
                           <span className="text-[10px] text-muted-foreground transition-all duration-150 md:group-hover/chat:pr-6 md:focus-within:pr-6 md:group-has-[[data-state=open]]/chat:pr-6">{displayTime}</span>
                           <div className="absolute right-0 w-6 h-6 opacity-0 md:group-hover/chat:opacity-100 md:focus-within:opacity-100 md:group-has-[[data-state=open]]/chat:opacity-100 hidden md:flex items-center justify-center">
@@ -241,25 +162,25 @@ function ChatPanel() {
                                 </button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl border border-border/50 bg-background shadow-xl">
-                                <DropdownMenuItem onClick={() => updateSettings(chat.id, { isArchived: !chat.isArchived })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
+                                <DropdownMenuItem onClick={() => ChatService.updateConversationSettings(chat.id, { isArchived: !chat.isArchived })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                                   <div className="flex items-center justify-center size-8 shrink-0">
                                     <Archive className="size-4" />
                                   </div>
                                   <span>{chat.isArchived ? "Unarchive" : "Archive"}</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => updateSettings(chat.id, { isMuted: !chat.isMuted })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
+                                <DropdownMenuItem onClick={() => ChatService.updateConversationSettings(chat.id, { isMuted: !chat.isMuted })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                                   <div className="flex items-center justify-center size-8 shrink-0">
                                     <VolumeX className="size-4" />
                                   </div>
                                   <span>{chat.isMuted ? "Unmute" : "Mute"}</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => updateSettings(chat.id, { isPinned: !chat.isPinned })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
+                                <DropdownMenuItem onClick={() => ChatService.updateConversationSettings(chat.id, { isPinned: !chat.isPinned })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                                   <div className="flex items-center justify-center size-8 shrink-0">
                                     <Pin className="size-4" />
                                   </div>
                                   <span>{chat.isPinned ? 'Unpin' : 'Pin'}</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => updateSettings(chat.id, { unreadCount: 0 })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
+                                <DropdownMenuItem onClick={() => ChatService.updateConversationSettings(chat.id, { unreadCount: 0 })} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                                   <div className="flex items-center justify-center size-8 shrink-0">
                                     <Check className="size-4" />
                                   </div>
@@ -278,14 +199,14 @@ function ChatPanel() {
                                   </div>
                                   <span>Block</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => deleteChat(chat.id, true)} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
+                                <DropdownMenuItem onClick={() => ChatService.deleteConversation(chat.id, true)} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer">
                                   <div className="flex items-center justify-center size-8 shrink-0">
                                     <Eraser className="size-4" />
                                   </div>
                                   <span>Clear Chat</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator className="my-1 bg-border/50" />
-                                <DropdownMenuItem onClick={() => deleteChat(chat.id, false)} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer focus:text-destructive focus:bg-destructive/10">
+                                <DropdownMenuItem onClick={() => ChatService.deleteConversation(chat.id, false)} className="h-10 rounded-xl text-sm px-2 gap-2 cursor-pointer focus:text-destructive focus:bg-destructive/10">
                                   <div className="flex items-center justify-center size-8 shrink-0">
                                     <Trash2 className="size-4" />
                                   </div>
@@ -316,9 +237,12 @@ function ChatPanel() {
                       </div>
                     </div>
                   </div>
+                  </div>
                 </Button>
               </div>
-            )})
+            )})}
+            <div ref={loadMoreRef} className="h-1" />
+            </>
           )}
         </div>
 
@@ -330,23 +254,25 @@ function ChatPanel() {
 }
 
 function NotificationsPanel() {
-  const [notifications, setNotifications] = React.useState<Notification[]>(initialNotifications)
+  const notifications = useNotificationStore((state) => state.notifications)
+  const markAsRead = useNotificationStore((state) => state.markAsRead)
+  const markAllAsRead = useNotificationStore((state) => state.markAllAsRead)
+  const removeNotification = useNotificationStore((state) => state.removeNotification)
+  
   const [filter, setFilter] = React.useState<"all" | "unread">("all")
   
   const unreadCount = notifications.filter((n) => !n.read).length
 
   const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+    markAllAsRead()
   }
 
   const handleDelete = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id))
+    removeNotification(id)
   }
 
   const handleToggleRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: !n.read } : n))
-    )
+    markAsRead(id)
   }
 
   const filteredNotifications = notifications.filter((n) => {

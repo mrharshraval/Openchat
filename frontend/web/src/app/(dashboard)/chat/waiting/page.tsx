@@ -7,7 +7,10 @@ import { Loader2, Globe, Tag, Ban, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useWebSocket } from "@/hooks/use-websocket"
+import { useChatStore } from "@/stores/chat-store"
+import { ChatService } from "@/services/chat-service"
+import { useMatchmakingStore } from "@/stores/matchmaking-store"
+import { MatchmakingService } from "@/services/matchmaking-service"
 
 import { env } from "@/env"
 
@@ -22,59 +25,39 @@ function MatchingQueueContent() {
   
   const interestsList = interestsParam ? interestsParam.split(",") : []
 
-  // Timer states
-  const [seconds, setSeconds] = React.useState(0)
+  const seconds = useMatchmakingStore((state) => state.matchingSeconds)
+  const status = useMatchmakingStore((state) => state.status)
+  const matchedSessionId = useMatchmakingStore((state) => state.matchedSessionId)
+
+  // Generate or retrieve persistent userId for queue tracking
   const [userId, setUserId] = React.useState<string>("")
 
   React.useEffect(() => {
-    // Generate or retrieve persistent userId for queue tracking
     let uId = sessionStorage.getItem("moots_userId")
     if (!uId) {
       uId = `user-${Math.random().toString(36).slice(2, 11)}`
       sessionStorage.setItem("moots_userId", uId)
     }
     setUserId(uId)
-
-    const timer = setInterval(() => {
-      setSeconds((prev) => prev + 1)
-    }, 1000)
-
-    return () => {
-      clearInterval(timer)
-    }
   }, [])
 
-  const wsUrl = env.NEXT_PUBLIC_WS_URL
-  useWebSocket(userId ? wsUrl : null, {
-    shouldReconnect: true,
-    reconnectAttempts: 3,
-    onOpen: (event) => {
-      const ws = event.target as WebSocket
-      ws.send(
-        JSON.stringify({
-          type: "join-queue",
-          payload: {
-            userId,
-            interests: interestsList,
-            lang: langParam,
-            country: countryParam,
-          },
-        })
-      )
-    },
-    onMessage: (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        const { type, payload } = data
+  React.useEffect(() => {
+    if (!userId) return
 
-        if (type === "match-found" && payload.sessionId) {
-          router.push(`/chat/${payload.sessionId}`)
-        }
-      } catch (e) {
-        console.error("Matchmaking WS error:", e)
-      }
+    MatchmakingService.startMatchmaking(userId, interestsList)
+
+    return () => {
+      // Don't cancel matchmaking automatically here on simple remounts, 
+      // but standard cleanup can be handled.
     }
-  })
+  }, [userId])
+
+  React.useEffect(() => {
+    if (status === "found" && matchedSessionId) {
+      ChatService.fetchConversations()
+      router.push(`/chat/${matchedSessionId}`)
+    }
+  }, [status, matchedSessionId, router])
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60).toString().padStart(2, "0")
@@ -83,6 +66,7 @@ function MatchingQueueContent() {
   }
 
   const handleCancel = () => {
+    MatchmakingService.cancelMatchmaking()
     router.push("/chat")
   }
 

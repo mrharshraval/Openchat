@@ -1,26 +1,27 @@
 "use client"
 
-import React, { createContext, useContext, ReactNode } from "react"
-import { useWebSocket, WebSocketStatus, UseWebSocketOptions } from "@/hooks/use-websocket"
+import React, { createContext, useContext, ReactNode, useEffect } from "react"
+import { useWsGateway } from "@/shared/hooks/use-ws-gateway"
+import { MatchmakingService } from "@/services/matchmaking-service"
 
-interface WebSocketContextType {
-  socket: WebSocket | null
-  status: WebSocketStatus
-  sendMessage: (data: string | ArrayBuffer | Blob | ArrayBufferView) => void
-  connect: () => void
-  disconnect: () => void
-}
-
-const WebSocketContext = createContext<WebSocketContextType | null>(null)
+const WebSocketContext = createContext<ReturnType<typeof useWsGateway> | null>(null)
 
 interface WebSocketProviderProps {
-  url: string | null | undefined
-  options?: UseWebSocketOptions
   children: ReactNode
 }
 
-export function WebSocketProvider({ url, options, children }: WebSocketProviderProps) {
-  const ws = useWebSocket(url, options)
+export function WebSocketProvider({ children }: WebSocketProviderProps) {
+  const ws = useWsGateway()
+
+  // Initialize the global gateway connection when this provider mounts
+  useEffect(() => {
+    ws.connect()
+    MatchmakingService.initListeners()
+    
+    return () => {
+      ws.disconnect()
+    }
+  }, [ws])
 
   return (
     <WebSocketContext.Provider value={ws}>

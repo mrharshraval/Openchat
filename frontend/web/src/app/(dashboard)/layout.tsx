@@ -19,6 +19,7 @@ import { usePathname } from "next/navigation"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useSession } from "next-auth/react"
 import { getOrInitializeNickname } from "@/lib/nickname"
+import { useChatStore } from "@/stores/chat-store"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile()
@@ -26,7 +27,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: session } = useSession()
 
   const [displayName, setDisplayName] = React.useState("Guest")
-  const [partnerName, setPartnerName] = React.useState<string | null>(null)
+
+  const activePartner = useChatStore((state) => state.activePartner)
+  const partnerName = activePartner ? (activePartner.username || activePartner.nickname) : null
 
   React.useEffect(() => {
     const user = session?.user
@@ -36,18 +39,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setDisplayName(getOrInitializeNickname())
     }
   }, [session])
-
-  React.useEffect(() => {
-    const handlePartner = (e: Event) => {
-      const customEvent = e as CustomEvent
-      const { username, nickname } = customEvent.detail
-      setPartnerName(username || nickname || null)
-    }
-    window.addEventListener("moots:partner-loaded", handlePartner)
-    return () => {
-      window.removeEventListener("moots:partner-loaded", handlePartner)
-    }
-  }, [])
 
   React.useEffect(() => {
     let pageName = ""

@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input"
 import { env } from "@/env"
 import { logger } from "@/lib/logger"
+import { useChatStore } from "@/stores/chat-store"
+import { ChatService } from "@/services/chat-service"
 
 const POPULAR_TOPICS = [
   { id: "gaming", label: "Gaming" },
@@ -73,10 +75,14 @@ export default function ChatConfiguratorPage() {
         action: "matchmaking-connect"
       })
 
+      let isCancelled = false;
+
       // Inner async function — useEffect callbacks cannot themselves be async
       const connect = async () => {
         // Fetch backend JWT — required by the realtime server for authentication
         const accessToken = await getWsAccessToken()
+        if (isCancelled) return;
+        
         const wsUrl = accessToken
           ? `${env.NEXT_PUBLIC_WS_URL}?token=${encodeURIComponent(accessToken)}&requestId=${requestId}`
           : `${env.NEXT_PUBLIC_WS_URL}?requestId=${requestId}`
@@ -112,6 +118,8 @@ export default function ChatConfiguratorPage() {
               if (timerRef.current) clearInterval(timerRef.current)
               ws.close()
 
+              ChatService.fetchConversations()
+
               setDialogState("matched")
               setTimeout(() => {
                 router.push(`/chat/${payload.sessionId}`)
@@ -128,6 +136,10 @@ export default function ChatConfiguratorPage() {
       }
 
       connect()
+
+      return () => {
+        isCancelled = true;
+      }
     }
   }, [])
 
@@ -237,6 +249,8 @@ export default function ChatConfiguratorPage() {
           if (timerRef.current) clearInterval(timerRef.current)
           ws.close()
           
+          ChatService.fetchConversations()
+
           setDialogState("matched")
           setTimeout(() => {
             router.push(`/chat/${payload.sessionId}`)

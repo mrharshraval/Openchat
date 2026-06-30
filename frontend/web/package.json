@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@moots/contracts": "workspace:*",
     "@auth/prisma-adapter": "^2.11.2",
     "@base-ui/react": "^1.5.0",
     "@prisma/adapter-better-sqlite3": "^7.8.0",

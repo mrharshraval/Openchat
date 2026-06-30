@@ -36,7 +36,41 @@ async function refreshBackendToken(): Promise<string | null> {
   return null;
 }
 
+interface TokenCache {
+  cachedToken: string | null
+  pendingTokenPromise: Promise<string | null> | null
+}
+
+function getCache(): TokenCache {
+  if (typeof window === "undefined") {
+    return { cachedToken: null, pendingTokenPromise: null }
+  }
+  const win = window as any
+  if (!win.__wsTokenCache) {
+    win.__wsTokenCache = { cachedToken: null, pendingTokenPromise: null }
+  }
+  return win.__wsTokenCache
+}
+
 export async function getWsAccessToken(): Promise<string | null> {
+  const cache = getCache();
+
+  if (cache.cachedToken && !isTokenExpired(cache.cachedToken)) {
+    return cache.cachedToken;
+  }
+
+  if (cache.pendingTokenPromise) {
+    return cache.pendingTokenPromise;
+  }
+
+  cache.pendingTokenPromise = fetchNewToken().finally(() => {
+    cache.pendingTokenPromise = null;
+  });
+
+  return cache.pendingTokenPromise;
+}
+
+async function fetchNewToken(): Promise<string | null> {
   try {
     let token = null;
 
@@ -50,17 +84,23 @@ export async function getWsAccessToken(): Promise<string | null> {
 
     if (!token) {
       // Fallback: Guest authentication token
-      token = localStorage.getItem("moots_guest_token");
+      token = typeof window !== "undefined" ? localStorage.getItem("moots_guest_token") : null;
     }
 
     // If we have a token and it's valid, return it
     if (token && !isTokenExpired(token)) {
+      const cache = getCache();
+      cache.cachedToken = token;
       return token;
     }
 
     // Token is expired or missing. Try refreshing using the Universal Session Platform cookie
     token = await refreshBackendToken();
-    if (token) return token;
+    if (token) {
+      const cache = getCache();
+      cache.cachedToken = token;
+      return token;
+    }
 
     // If refresh failed (no cookie or invalid cookie), provision a new guest session
     const guestRes = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/auth/guest`, { 
@@ -73,7 +113,11 @@ export async function getWsAccessToken(): Promise<string | null> {
       const guestData = await guestRes.json();
       token = guestData.data?.accessToken;
       if (token) {
-        localStorage.setItem("moots_guest_token", token);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("moots_guest_token", token);
+        }
+        const cache = getCache();
+        cache.cachedToken = token;
         return token;
       }
     }

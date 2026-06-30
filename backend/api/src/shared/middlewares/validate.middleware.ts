@@ -1,4 +1,4 @@
-﻿import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from "express";
 import { ZodSchema, ZodError } from "zod";
 import { ValidationError } from "../errors/AppError.js";
 
@@ -16,7 +16,7 @@ export const validateRequest = (schema: ZodSchema) => {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const details = (error as any).errors.map((err: any) => ({
+        const details = error.issues.map((err: any) => ({
           path: err.path.join("."),
           message: err.message,
         }));
