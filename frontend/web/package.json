@@ -13,11 +13,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@moots/contracts": "workspace:*",
     "@auth/prisma-adapter": "^2.11.2",
     "@base-ui/react": "^1.5.0",
+    "@moots/contracts": "workspace:*",
     "@prisma/adapter-better-sqlite3": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "@tanstack/react-query": "^5.101.2",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.11.1",
     "class-variance-authority": "^0.7.1",
@@ -55,6 +56,7 @@
     "@types/ws": "^8.18.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "eslint-plugin-boundaries": "^6.0.2",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "prisma": "^7.8.0",

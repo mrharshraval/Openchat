@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
 import Credentials from "next-auth/providers/credentials";
 import { env } from "./env";
-import { apiRequest } from "@/lib/api-client";
+import { apiRequest } from "@/infrastructure/http/api-client";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,

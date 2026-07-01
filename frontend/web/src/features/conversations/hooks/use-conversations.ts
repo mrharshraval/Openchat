@@ -1,0 +1,85 @@
+import * as React from "react"
+import { useMessagesStore } from "@/features/chat"
+import { ConversationRepository } from "../repositories/conversation.repository"
+
+export function useConversations() {
+  const filter = useMessagesStore((state) => state.filter)
+  const setFilter = useMessagesStore((state) => state.setFilter)
+  const searchQuery = useMessagesStore((state) => state.searchQuery)
+  const setSearchQuery = useMessagesStore((state) => state.setSearchQuery)
+  const conversations = useMessagesStore((state) => state.conversations)
+  const isLoading = useMessagesStore((state) => state.isLoading)
+  const hasMore = useMessagesStore((state) => state.hasMore)
+  const nextCursor = useMessagesStore((state) => state.nextCursor)
+
+  const observerRef = React.useRef<IntersectionObserver | null>(null)
+  const loadMoreRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    ConversationRepository.fetchConversations().catch(console.error)
+  }, [])
+
+  React.useEffect(() => {
+    if (!hasMore) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const state = useMessagesStore.getState()
+        if (entries[0].isIntersecting && nextCursor && !state.isLoading) {
+          ConversationRepository.fetchConversations(nextCursor).catch(console.error)
+        }
+      },
+      { threshold: 1.0 }
+    )
+
+    if (loadMoreRef.current) observer.observe(loadMoreRef.current)
+    observerRef.current = observer
+
+    return () => {
+      if (observerRef.current) observerRef.current.disconnect()
+    }
+  }, [hasMore, nextCursor])
+
+  const filteredConversations = React.useMemo(() => {
+    let filtered = conversations || []
+    
+    if (filter === "archived") {
+      filtered = filtered.filter(c => c.isArchived)
+    } else if (filter === "requests") {
+      filtered = []
+    } else {
+      filtered = filtered.filter(c => !c.isArchived)
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      filtered = filtered.filter(c => 
+        c.name?.toLowerCase().includes(q) || 
+        c.participants.some(p => p.name?.toLowerCase().includes(q) || p.username?.toLowerCase().includes(q)) ||
+        c.lastMessagePreview?.toLowerCase().includes(q)
+      )
+    }
+
+    return filtered.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1
+      if (!a.isPinned && b.isPinned) return 1
+      
+      const timeA = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : 0
+      const timeB = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : 0
+      return timeB - timeA
+    })
+  }, [conversations, filter, searchQuery])
+
+  return {
+    filter,
+    setFilter,
+    searchQuery,
+    setSearchQuery,
+    isLoading,
+    filteredConversations,
+    loadMoreRef,
+    hasMore,
+    updateSettings: ConversationRepository.updateConversationSettings,
+    deleteConversation: ConversationRepository.deleteConversation
+  }
+}

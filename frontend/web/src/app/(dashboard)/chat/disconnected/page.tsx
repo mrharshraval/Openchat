@@ -4,9 +4,9 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { AlertCircle, RotateCcw, Home, Sparkles, Download } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/shared/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card"
+import { Badge } from "@/shared/ui/badge"
 
 export default function DisconnectedPage() {
   const router = useRouter()

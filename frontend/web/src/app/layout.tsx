@@ -2,11 +2,11 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono, Inter } from "next/font/google"
 
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { Toaster } from "@/components/ui/sonner"
-import { cn } from "@/lib/utils";
-import { CookieBanner } from "@/components/panels/cookie-banner"
+import { ThemeProvider } from "@/shared/layout/theme-provider"
+import { TooltipProvider } from "@/shared/ui/tooltip"
+import { Toaster } from "@/shared/ui/sonner"
+import { cn } from "@/shared/utils/utils";
+import { CookieBanner } from "@/shared/layout/cookie-banner"
 
 export const metadata: Metadata = {
   title: {
@@ -27,6 +27,8 @@ export const metadata: Metadata = {
 }
 
 import { SessionProvider } from "next-auth/react"
+import { QueryProvider } from "@/providers/query-provider"
+import { WebSocketProvider } from "@/providers/websocket-provider"
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'})
 
@@ -48,13 +50,17 @@ export default function RootLayout({
     >
       <body>
         <SessionProvider>
-          <ThemeProvider>
-            <TooltipProvider>
-              {children}
-              <Toaster />
-              <CookieBanner />
-            </TooltipProvider>
-          </ThemeProvider>
+          <QueryProvider>
+            <WebSocketProvider>
+              <ThemeProvider>
+                <TooltipProvider>
+                  {children}
+                  <Toaster />
+                  <CookieBanner />
+                </TooltipProvider>
+              </ThemeProvider>
+            </WebSocketProvider>
+          </QueryProvider>
         </SessionProvider>
       </body>
     </html>

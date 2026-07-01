@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { env } from "@/env";
-import { apiRequest } from "@/lib/api-client";
+import { apiRequest } from "@/infrastructure/http/api-client";
 
 export async function POST(req: Request) {
   try {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { wsGateway, WsEventHandler } from "@/infrastructure/ws-gateway"
+import { wsGateway, WsEventHandler } from "@/infrastructure/websocket/ws-gateway"
 
 export function useWsGateway() {
   const [status, setStatus] = useState<number>(wsGateway.readyState)

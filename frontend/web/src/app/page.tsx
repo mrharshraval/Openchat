@@ -14,18 +14,18 @@ import {
   Sparkles,
 } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Button } from "@/shared/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/shared/ui/card"
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion"
-import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
+} from "@/shared/ui/accordion"
+import { Separator } from "@/shared/ui/separator"
+import { Badge } from "@/shared/ui/badge"
 
-import { LandingHeader } from "@/components/panels/landing-header"
+import { LandingHeader } from "@/shared/layout/landing-header"
 
 export const metadata: Metadata = {
   title: "Moots - Talk to Someone New Instantly | Anonymous Random Chat",

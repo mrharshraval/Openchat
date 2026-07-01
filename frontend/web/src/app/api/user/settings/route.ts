@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { env } from "@/env";
-import { apiRequest } from "@/lib/api-client";
+import { apiRequest } from "@/infrastructure/http/api-client";
 
 export async function PUT(req: Request) {
   try {

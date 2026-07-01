@@ -1,0 +1,64 @@
+import * as React from "react"
+import { CheckCheck, Heart } from "lucide-react"
+import { Button } from "@/shared/ui/button"
+
+export interface ActionBarProps {
+  partnerRevealedIdentity: boolean
+  connectionStatus: "none" | "pending_sent" | "pending_received" | "accepted" | "rejected" | null
+  hasRevealedIdentity: boolean
+  isUserLoggedIn: boolean
+  handleRevealIdentity: () => void
+  handleSendConnectionRequest: () => void
+  handleAcceptConnectionRequest: () => void
+}
+
+export function ActionBar({
+  partnerRevealedIdentity,
+  connectionStatus,
+  hasRevealedIdentity,
+  isUserLoggedIn,
+  handleRevealIdentity,
+  handleSendConnectionRequest,
+  handleAcceptConnectionRequest
+}: ActionBarProps) {
+  return (
+    <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 bg-muted/10 shrink-0">
+      <div className="text-xs text-muted-foreground flex gap-4">
+        {partnerRevealedIdentity ? (
+          <span className="text-primary font-medium flex items-center gap-1.5">
+            <CheckCheck className="w-3.5 h-3.5" /> Identity Revealed
+          </span>
+        ) : (
+          <span>Anonymous Chat</span>
+        )}
+        {connectionStatus === "accepted" && (
+          <span className="text-primary font-medium flex items-center gap-1.5">
+            <Heart className="w-3.5 h-3.5" /> Connected
+          </span>
+        )}
+      </div>
+      <div className="flex gap-2">
+        {!hasRevealedIdentity && isUserLoggedIn && (
+          <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={handleRevealIdentity}>
+            Reveal Identity
+          </Button>
+        )}
+        {connectionStatus === "none" && (
+          <Button variant="secondary" size="sm" className="h-7 text-[11px]" onClick={handleSendConnectionRequest}>
+            Connect
+          </Button>
+        )}
+        {connectionStatus === "pending_sent" && (
+          <Button variant="secondary" size="sm" className="h-7 text-[11px]" disabled>
+            Request Sent
+          </Button>
+        )}
+        {connectionStatus === "pending_received" && (
+          <Button variant="secondary" size="sm" className="h-7 text-[11px] bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleAcceptConnectionRequest}>
+            Accept Connection
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}

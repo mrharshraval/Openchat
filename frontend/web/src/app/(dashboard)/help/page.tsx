@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/shared/ui/accordion";
 import { HelpCircle, Mail, ShieldAlert, FileText, Scale } from "lucide-react";
 
 import { env } from "@/env";

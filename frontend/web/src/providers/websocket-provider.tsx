@@ -1,30 +1,43 @@
 "use client"
 
-import React, { createContext, useContext, ReactNode, useEffect } from "react"
-import { useWsGateway } from "@/shared/hooks/use-ws-gateway"
-import { MatchmakingService } from "@/services/matchmaking-service"
+import React, { createContext, useContext, ReactNode, useEffect, useState } from "react"
+import { wsGateway } from "@/infrastructure/websocket/ws-gateway"
 
-const WebSocketContext = createContext<ReturnType<typeof useWsGateway> | null>(null)
-
-interface WebSocketProviderProps {
-  children: ReactNode
+interface WebSocketContextValue {
+  readyState: number
+  connect: () => void
+  disconnect: () => void
 }
 
-export function WebSocketProvider({ children }: WebSocketProviderProps) {
-  const ws = useWsGateway()
+const WebSocketContext = createContext<WebSocketContextValue | null>(null)
 
-  // Initialize the global gateway connection when this provider mounts
+export function WebSocketProvider({ children }: { children: ReactNode }) {
+  const [readyState, setReadyState] = useState<number>(wsGateway.readyState)
+
   useEffect(() => {
-    ws.connect()
-    MatchmakingService.initListeners()
+    wsGateway.connect()
+
+    const handleOpen = () => setReadyState(1) // WebSocket.OPEN is 1
+    const handleClose = () => setReadyState(3) // WebSocket.CLOSED is 3
     
+    wsGateway.on("open", handleOpen)
+    wsGateway.on("close", handleClose)
+
     return () => {
-      ws.disconnect()
+      wsGateway.off("open", handleOpen)
+      wsGateway.off("close", handleClose)
+      wsGateway.disconnect()
     }
-  }, [ws])
+  }, [])
+
+  const value = {
+    readyState,
+    connect: () => wsGateway.connect(),
+    disconnect: () => wsGateway.disconnect()
+  }
 
   return (
-    <WebSocketContext.Provider value={ws}>
+    <WebSocketContext.Provider value={value}>
       {children}
     </WebSocketContext.Provider>
   )

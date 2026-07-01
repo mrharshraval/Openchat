@@ -2,24 +2,24 @@
 
 import * as React from "react"
 import { Info } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { cn } from "@/shared/utils/utils"
+import { Avatar, AvatarFallback } from "@/shared/ui/avatar"
+import { Button } from "@/shared/ui/button"
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { SidebarNav } from "@/components/panels/sidebar-nav"
-import { SecondaryNav } from "@/components/panels/secondary-nav"
-import { useIsMobile } from "@/hooks/use-mobile"
+} from "@/shared/ui/sidebar"
+import { SidebarNav } from "@/shared/layout/sidebar-nav"
+import { SecondaryNav } from "@/shared/layout/secondary-nav"
+import { useIsMobile } from "@/shared/hooks/use-mobile"
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip"
 import { useSession } from "next-auth/react"
-import { getOrInitializeNickname } from "@/lib/nickname"
-import { useChatStore } from "@/stores/chat-store"
+import { getOrInitializeNickname } from "@/shared/utils/nickname"
+import { usePartnerStateStore } from "@/features/chat"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile()
@@ -28,8 +28,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const [displayName, setDisplayName] = React.useState("Guest")
 
-  const activePartner = useChatStore((state) => state.activePartner)
-  const partnerName = activePartner ? (activePartner.username || activePartner.nickname) : null
+  const peerNickname = usePartnerStateStore((state) => state.peerNickname)
+  const peerUsername = usePartnerStateStore((state) => state.peerUsername)
+  const isWsReady = usePartnerStateStore((state) => state.isWsReady)
+  const partnerName = isWsReady ? (peerUsername || peerNickname) : null
 
   React.useEffect(() => {
     const user = session?.user

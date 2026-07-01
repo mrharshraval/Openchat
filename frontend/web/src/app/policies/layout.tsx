@@ -4,8 +4,8 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { Separator } from "@/components/ui/separator"
-import { LandingHeader } from "@/components/panels/landing-header"
+import { Separator } from "@/shared/ui/separator"
+import { LandingHeader } from "@/shared/layout/landing-header"
 
 const POLICY_LINKS = [
   { label: "Terms of Use", href: "/policies/terms" },
